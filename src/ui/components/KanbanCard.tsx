@@ -48,6 +48,7 @@ interface KanbanCardProps {
   runningAgent?: RunningAgent;
   pendingInput?: InputRequest;
   workflowBadgeMode?: 'dot' | 'border';
+  workflowColorOverride?: string | null;
   isSelected?: boolean;
   onClick: () => void;
   onArchive: () => void;
@@ -84,11 +85,11 @@ function SessionLink({ session }: { session: IssueSession }) {
   );
 }
 
-export function KanbanCard({ issue, runningAgent, pendingInput, workflowBadgeMode = 'border', isSelected = false, onClick, onArchive }: KanbanCardProps) {
+export function KanbanCard({ issue, runningAgent, pendingInput, workflowBadgeMode = 'border', workflowColorOverride, isSelected = false, onClick, onArchive }: KanbanCardProps) {
   const [elapsed, setElapsed] = useState<string>('');
   const [isHovered, setIsHovered] = useState(false);
   
-  const workflowColor = getWorkflowColor(issue.workflowId);
+  const workflowColor = workflowColorOverride || getWorkflowColor(issue.workflowId);
 
   useEffect(() => {
     if (!isHovered) return;

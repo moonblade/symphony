@@ -85,6 +85,7 @@ export interface StoredWorkflow {
   isDefault: boolean;
   isPrivate: boolean;
   maxConcurrentAgents: number;
+  color?: string;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -61,6 +61,7 @@ export interface Workflow {
   isPrivate?: boolean;
   config?: WorkflowConfig;
   maxConcurrentAgents?: number;
+  color?: string | null;
   createdAt: string;
   updatedAt: string;
 }

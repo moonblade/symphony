@@ -99,6 +99,11 @@ export function App(): JSX.Element {
             runningAgents={state.runningAgents}
             pendingInputRequests={state.pendingInputRequests}
             workflowBadgeMode={state.workflowBadgeMode}
+            workflowColorMap={Object.fromEntries(
+              state.workflows
+                .filter((w) => w.color)
+                .map((w) => [w.id, w.color])
+            )}
             onCardClick={handleCardClick}
             onAddCard={handleAddCard}
             onIssuesChanged={fetchIssues}
