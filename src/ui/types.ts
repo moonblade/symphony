@@ -126,6 +126,7 @@ export interface LocalSettings {
   workflowBadgeMode?: 'dot' | 'border';
   theme?: ThemeMode;
   safeExecute?: boolean;
+  workflowsRootDir?: string | null;
 }
 
 export type KanbanColumnState = 'Backlog' | 'Todo' | 'In Progress' | 'Review' | 'Done';

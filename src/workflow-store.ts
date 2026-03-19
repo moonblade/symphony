@@ -52,6 +52,19 @@ export class WorkflowStore {
     return this.privateWorkflowsDir;
   }
 
+  setWorkflowsDir(dir: string | null, fallback: string): void {
+    const resolved = dir ?? fallback;
+    if (resolved !== this.workflowsDir) {
+      this.workflowsDir = resolved;
+      this.cachedWorkflows = null;
+      log.debug('Workflows root directory updated', { dir: resolved });
+    }
+  }
+
+  getWorkflowsDir(): string {
+    return this.workflowsDir;
+  }
+
   private get jsonPath(): string {
     return path.join(this.workflowsDir, 'workflows.json');
   }

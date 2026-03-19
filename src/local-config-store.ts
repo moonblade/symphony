@@ -10,6 +10,7 @@ export interface LocalConfig {
   workflowBadgeMode?: 'dot' | 'border';
   theme?: 'system' | 'light' | 'dark';
   safeExecute?: boolean;
+  workflowsRootDir?: string | null;
 }
 
 const DEFAULT_CONFIG: LocalConfig = {
@@ -18,6 +19,7 @@ const DEFAULT_CONFIG: LocalConfig = {
   workflowBadgeMode: 'dot',
   theme: 'system',
   safeExecute: false,
+  workflowsRootDir: null,
 };
 
 export class LocalConfigStore {
@@ -77,6 +79,7 @@ export class LocalConfigStore {
       workflowBadgeMode: updated.workflowBadgeMode,
       theme: updated.theme,
       safeExecute: updated.safeExecute,
+      workflowsRootDir: updated.workflowsRootDir,
     });
     
     return updated;
@@ -111,6 +114,39 @@ export class LocalConfigStore {
         log.debug('Private workflows directory does not exist', { path: dir });
       } else {
         log.warn('Failed to access private workflows directory', { 
+          path: dir, 
+          error: (err as Error).message 
+        });
+      }
+      return null;
+    }
+  }
+
+  async getWorkflowsRootDir(): Promise<string | null> {
+    const config = await this.getConfig();
+
+    if (!config.workflowsRootDir) {
+      return null;
+    }
+
+    let dir = config.workflowsRootDir;
+    if (dir.startsWith('~')) {
+      const os = await import('node:os');
+      dir = path.join(os.homedir(), dir.slice(1));
+    }
+
+    try {
+      const stat = await fs.stat(dir);
+      if (!stat.isDirectory()) {
+        log.warn('Workflows root path is not a directory', { path: dir });
+        return null;
+      }
+      return dir;
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+        log.debug('Workflows root directory does not exist', { path: dir });
+      } else {
+        log.warn('Failed to access workflows root directory', { 
           path: dir, 
           error: (err as Error).message 
         });
