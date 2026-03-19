@@ -120,17 +120,19 @@ export function useAppState() {
     onLog: (data) => {
       setState((prev) => ({
         ...prev,
-        logs: [...prev.logs, data].slice(-1000),
+        logs: [...prev.logs, data].slice(-500),
       }));
     },
     onAgentLog: (issueId, entry) => {
       setState((prev) => {
         const cache = prev.agentLogCache[issueId] || [];
+        const MAX_AGENT_LOG_CACHE = 200;
+        const updated = cache.length >= MAX_AGENT_LOG_CACHE ? [...cache.slice(1), entry] : [...cache, entry];
         return {
           ...prev,
           agentLogCache: {
             ...prev.agentLogCache,
-            [issueId]: [...cache, entry],
+            [issueId]: updated,
           },
         };
       });

@@ -179,8 +179,9 @@ export class ChatManager {
       let completed = false;
 
       const timeoutMs = 120000;
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error(`Chat response timed out after ${timeoutMs}ms`)), timeoutMs);
+        timeoutId = setTimeout(() => reject(new Error(`Chat response timed out after ${timeoutMs}ms`)), timeoutMs);
       });
 
       const processEvents = async () => {
@@ -291,6 +292,15 @@ export class ChatManager {
           }
         }
       }
+
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+
+      try {
+        await eventStream.stream.return?.(undefined);
+      } catch (_streamCloseErr) {}
 
       eventProcessingPromise.catch(() => {});
 
