@@ -579,7 +579,7 @@ export class WebServer {
 
     this.app.post('/api/workflows', async (req, res) => {
       try {
-        const { name, description, promptTemplate, config, isDefault, maxConcurrentAgents } = req.body;
+        const { name, description, promptTemplate, config, isDefault, maxConcurrentAgents, color } = req.body;
         
         if (!name || !promptTemplate) {
           res.status(400).json({ error: 'Name and promptTemplate are required' });
@@ -593,6 +593,7 @@ export class WebServer {
           config: config ?? {},
           isDefault: isDefault ?? false,
           maxConcurrentAgents: typeof maxConcurrentAgents === 'number' ? maxConcurrentAgents : 1,
+          color: typeof color === 'string' ? color : undefined,
         });
 
         this.broadcast({ type: 'workflows_updated' });
@@ -604,7 +605,7 @@ export class WebServer {
 
     this.app.put('/api/workflows/:id', async (req, res) => {
       try {
-        const { name, description, promptTemplate, config, isDefault, maxConcurrentAgents } = req.body;
+        const { name, description, promptTemplate, config, isDefault, maxConcurrentAgents, color } = req.body;
         
         const workflow = await this.workflowStore.updateWorkflow(req.params.id, {
           name,
@@ -613,6 +614,7 @@ export class WebServer {
           config,
           isDefault,
           maxConcurrentAgents,
+          color: color !== undefined ? (typeof color === 'string' ? color : null) : undefined,
         });
 
         if (!workflow) {
@@ -964,6 +966,7 @@ export class WebServer {
       isDefault: workflow.isDefault,
       isPrivate: workflow.isPrivate,
       maxConcurrentAgents: workflow.maxConcurrentAgents,
+      color: workflow.color ?? null,
       createdAt: workflow.createdAt.toISOString(),
       updatedAt: workflow.updatedAt.toISOString(),
     };

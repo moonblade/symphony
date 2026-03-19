@@ -14,6 +14,7 @@ interface KanbanColumnProps {
   runningAgents: RunningAgent[];
   pendingInputRequests: Record<string, InputRequest>;
   workflowBadgeMode?: 'dot' | 'border';
+  workflowColorMap?: Record<string, string | null | undefined>;
   selectedCardId: string | null;
   quickAddPosition: QuickAddPosition | null;
   onCardClick: (issueId: string) => void;
@@ -40,6 +41,7 @@ export function KanbanColumn({
   runningAgents,
   pendingInputRequests,
   workflowBadgeMode,
+  workflowColorMap,
   selectedCardId,
   quickAddPosition,
   onCardClick,
@@ -126,6 +128,7 @@ export function KanbanColumn({
               runningAgent={runningAgents.find((a) => a.issueId === issue.id)}
               pendingInput={pendingInputRequests[issue.id]}
               workflowBadgeMode={workflowBadgeMode}
+              workflowColorOverride={issue.workflowId ? workflowColorMap?.[issue.workflowId] : undefined}
               isSelected={selectedCardId === issue.id}
               onClick={() => onCardClick(issue.id)}
               onArchive={() => onArchiveCard(issue.id)}

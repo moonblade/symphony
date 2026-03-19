@@ -21,6 +21,7 @@ export function WorkflowModal({ workflow, onClose, onSave }: WorkflowModalProps)
   const [model, setModel] = useState(workflow?.config?.opencode?.model || '');
   const [secondaryModel, setSecondaryModel] = useState(workflow?.config?.opencode?.secondary_model || '');
   const [maxConcurrentAgents, setMaxConcurrentAgents] = useState<number>(workflow?.maxConcurrentAgents ?? 1);
+  const [color, setColor] = useState<string>(workflow?.color || '');
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -54,6 +55,7 @@ export function WorkflowModal({ workflow, onClose, onSave }: WorkflowModalProps)
         isDefault: isPrivate ? false : isDefault,
         config,
         maxConcurrentAgents,
+        color: color || null,
       };
 
       if (workflow) {
@@ -153,6 +155,32 @@ export function WorkflowModal({ workflow, onClose, onSave }: WorkflowModalProps)
                     onInput={(e) => setDescription(e.currentTarget.value)}
                     className="w-full p-2 border border-gray-300 dark:border-[#3d3d3d] rounded h-20 focus:ring-2 focus:ring-blue-500 outline-none resize-y bg-white dark:bg-[#2d2d2d] text-gray-900 dark:text-[#e0e0e0]"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-[#a0a0a0] mb-1">Card Color</label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="color"
+                      value={color || '#6366f1'}
+                      onInput={(e) => setColor(e.currentTarget.value)}
+                      className="h-9 w-14 p-0.5 border border-gray-300 dark:border-[#3d3d3d] rounded cursor-pointer bg-white dark:bg-[#2d2d2d]"
+                      title="Pick a color for the card's left bar"
+                    />
+                    <span className="text-sm text-gray-600 dark:text-[#a0a0a0] font-mono">{color || '(none)'}</span>
+                    {color && (
+                      <button
+                        type="button"
+                        onClick={() => setColor('')}
+                        className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-[#a0a0a0] underline"
+                      >
+                        Reset to auto
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-[#808080] mt-1">
+                    Custom color for the card's left bar. Leave empty to use an auto-generated color.
+                  </p>
                 </div>
 
                 <div>

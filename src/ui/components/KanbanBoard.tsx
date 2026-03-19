@@ -15,6 +15,7 @@ interface KanbanBoardProps {
   runningAgents: RunningAgent[];
   pendingInputRequests: Record<string, InputRequest>;
   workflowBadgeMode?: 'dot' | 'border';
+  workflowColorMap?: Record<string, string | null | undefined>;
   onCardClick: (issueId: string) => void;
   onAddCard: (state: KanbanColumnState) => void;
   onIssuesChanged: () => void;
@@ -25,6 +26,7 @@ export function KanbanBoard({
   runningAgents,
   pendingInputRequests,
   workflowBadgeMode,
+  workflowColorMap,
   onCardClick,
   onAddCard,
   onIssuesChanged,
@@ -160,6 +162,7 @@ export function KanbanBoard({
               runningAgents={runningAgents}
               pendingInputRequests={pendingInputRequests}
               workflowBadgeMode={workflowBadgeMode}
+              workflowColorMap={workflowColorMap}
               selectedCardId={selectedCardId}
               quickAddPosition={quickAddPosition?.columnState === col ? quickAddPosition : null}
               onCardClick={handleCardSelect}

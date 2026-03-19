@@ -44,9 +44,11 @@ export function WorkflowsView({ workflows, onEdit, onCreate }: WorkflowsViewProp
               style={{
                 background: 'var(--bg-secondary)',
                 borderColor: 'var(--border-primary)',
-                borderLeft: workflow.isDefault ? '4px solid var(--accent-green)' : undefined,
+                borderLeft: workflow.color
+                  ? `4px solid ${workflow.color}`
+                  : workflow.isDefault ? '4px solid var(--accent-green)' : undefined,
               }}
-              onMouseOver={(e) => (e.currentTarget.style.borderColor = workflow.isDefault ? 'var(--accent-green)' : 'var(--text-muted)')}
+              onMouseOver={(e) => (e.currentTarget.style.borderColor = workflow.color ?? (workflow.isDefault ? 'var(--accent-green)' : 'var(--text-muted)'))}
               onMouseOut={(e) => (e.currentTarget.style.borderColor = 'var(--border-primary)')}
             >
               <div className="flex justify-between items-start mb-2">

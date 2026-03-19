@@ -15,6 +15,7 @@ interface LocalWorkflowData {
   config: WorkflowConfig;
   is_default?: boolean;
   max_concurrent_agents?: number;
+  color?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -194,6 +195,7 @@ export class WorkflowStore {
         isDefault: isPrivate ? false : (data.is_default ?? false), // Private workflows can't be default
         isPrivate,
         maxConcurrentAgents: data.max_concurrent_agents ?? 1,
+        color: data.color,
         createdAt: data.created_at ? new Date(data.created_at) : new Date(),
         updatedAt: data.updated_at ? new Date(data.updated_at) : new Date(),
       });
@@ -340,6 +342,7 @@ export class WorkflowStore {
         isDefault: data.is_default ?? false,
         isPrivate: false,
         maxConcurrentAgents: data.max_concurrent_agents ?? 1,
+        color: data.color,
         createdAt: data.created_at ? new Date(data.created_at) : new Date(),
         updatedAt: data.updated_at ? new Date(data.updated_at) : new Date(),
       };
@@ -364,6 +367,7 @@ export class WorkflowStore {
       isDefault: false,
       isPrivate: true,
       maxConcurrentAgents: privateData.max_concurrent_agents ?? 1,
+      color: privateData.color,
       createdAt: privateData.created_at ? new Date(privateData.created_at) : new Date(),
       updatedAt: privateData.updated_at ? new Date(privateData.updated_at) : new Date(),
     };
@@ -381,6 +385,7 @@ export class WorkflowStore {
     config?: WorkflowConfig;
     isDefault?: boolean;
     maxConcurrentAgents?: number;
+    color?: string;
   }): Promise<StoredWorkflow> {
     await this.ensureWorkflowsDir();
     
@@ -408,6 +413,7 @@ export class WorkflowStore {
       config: data.config ?? {},
       is_default: data.isDefault ?? false,
       max_concurrent_agents: data.maxConcurrentAgents ?? 1,
+      color: data.color,
       created_at: now.toISOString(),
       updated_at: now.toISOString(),
     };
@@ -430,6 +436,7 @@ export class WorkflowStore {
       isDefault: data.isDefault ?? false,
       isPrivate: false,
       maxConcurrentAgents: data.maxConcurrentAgents ?? 1,
+      color: data.color,
       createdAt: now,
       updatedAt: now,
     };
@@ -442,6 +449,7 @@ export class WorkflowStore {
     config: WorkflowConfig;
     isDefault: boolean;
     maxConcurrentAgents: number;
+    color: string | null;
   }>): Promise<StoredWorkflow | null> {
     const workflowsData = await this.loadWorkflowsJson();
     const index = workflowsData.findIndex(w => w.id === id);
@@ -460,6 +468,7 @@ export class WorkflowStore {
       if (updates.config !== undefined) workflowData.config = updates.config;
       if (updates.isDefault !== undefined) workflowData.is_default = updates.isDefault;
       if (updates.maxConcurrentAgents !== undefined) workflowData.max_concurrent_agents = updates.maxConcurrentAgents;
+      if (updates.color !== undefined) workflowData.color = updates.color ?? undefined;
       workflowData.updated_at = new Date().toISOString();
 
       if (updates.promptTemplate !== undefined) {
@@ -482,6 +491,7 @@ export class WorkflowStore {
         isDefault: workflowData.is_default ?? false,
         isPrivate: false,
         maxConcurrentAgents: workflowData.max_concurrent_agents ?? 1,
+        color: workflowData.color,
         createdAt: workflowData.created_at ? new Date(workflowData.created_at) : new Date(),
         updatedAt: new Date(workflowData.updated_at!),
       };
@@ -502,6 +512,7 @@ export class WorkflowStore {
     if (updates.description !== undefined) privateWorkflowData.description = updates.description;
     if (updates.config !== undefined) privateWorkflowData.config = updates.config;
     if (updates.maxConcurrentAgents !== undefined) privateWorkflowData.max_concurrent_agents = updates.maxConcurrentAgents;
+    if (updates.color !== undefined) privateWorkflowData.color = updates.color ?? undefined;
     privateWorkflowData.updated_at = new Date().toISOString();
 
     if (updates.promptTemplate !== undefined) {
@@ -524,6 +535,7 @@ export class WorkflowStore {
       isDefault: false,
       isPrivate: true,
       maxConcurrentAgents: privateWorkflowData.max_concurrent_agents ?? 1,
+      color: privateWorkflowData.color,
       createdAt: privateWorkflowData.created_at ? new Date(privateWorkflowData.created_at) : new Date(),
       updatedAt: new Date(privateWorkflowData.updated_at!),
     };
