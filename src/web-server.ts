@@ -9,7 +9,7 @@ import { ServiceConfig } from './config.js';
 import { IssueTrackerClient } from './issue-tracker.js';
 import { WorkflowStore } from './workflow-store.js';
 import { LocalConfigStore } from './local-config-store.js';
-import { getLogs, setLogStreamCallback } from './log-buffer.js';
+import { getLogs, setLogStreamCallback, clearLogStreamCallback } from './log-buffer.js';
 import { Logger } from './logger.js';
 import { AgentLogEntry, InputRequest, StoredWorkflow, Issue, IssueSession, IssueComment, IssueLog } from './types.js';
 import { ChatManager, ChatEvent } from './chat-manager.js';
@@ -978,6 +978,21 @@ export class WebServer {
     });
   }
 
+  stop(): void {
+    for (const client of this.sseClients) {
+      client.end();
+    }
+    this.sseClients.clear();
+
+    for (const client of this.chatSseClients) {
+      client.end();
+    }
+    this.chatSseClients.clear();
+
+    clearLogStreamCallback();
+    this.agentLogs.clear();
+  }
+
   private getDashboardHTML(): string {
     return `<!DOCTYPE html>
 <html lang="en">
@@ -986,22 +1001,6 @@ export class WebServer {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Symphony Dashboard</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            'symphony-bg': '#f8f7f6',
-            'symphony-text': '#37352f',
-            'symphony-border': '#e8e5e0',
-            'symphony-muted': '#9b9a97',
-          }
-        }
-      }
-    }
-  </script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
   <link rel="stylesheet" href="/ui/styles.css">
