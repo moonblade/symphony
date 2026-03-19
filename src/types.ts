@@ -110,12 +110,14 @@ export const AutoTransitionConfigSchema = z.object({
 });
 
 export const TrackerConfigSchema = z.object({
-  kind: z.enum(['linear', 'local']).optional(),
+  kind: z.enum(['linear', 'local', 'gitlab']).optional(),
   endpoint: z.string().optional(),
   api_key: z.string().optional(),
   project_slug: z.string().optional(),
   issues_path: z.string().optional(),
   auto_transition: AutoTransitionConfigSchema.optional(),
+  project_path: z.string().optional(),
+  gitlab_host: z.string().optional(),
 });
 
 export const PollingConfigSchema = z.object({

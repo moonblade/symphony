@@ -3,6 +3,7 @@ export { ServiceConfig } from './config.js';
 export { IssueTrackerClient } from './issue-tracker.js';
 export { LinearIssueTrackerClient } from './linear-client.js';
 export { LocalSqliteClient } from './local-sqlite-client.js';
+export { GitLabIssueTrackerClient } from './gitlab-client.js';
 export { WorkspaceManager } from './workspace-manager.js';
 export { AgentRunner } from './agent-runner.js';
 export { Orchestrator } from './orchestrator.js';

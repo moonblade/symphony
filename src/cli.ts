@@ -8,6 +8,7 @@ import { ServiceConfig } from './config.js';
 import { IssueTrackerClient } from './issue-tracker.js';
 import { LinearIssueTrackerClient } from './linear-client.js';
 import { LocalSqliteClient } from './local-sqlite-client.js';
+import { GitLabIssueTrackerClient } from './gitlab-client.js';
 import { WorkspaceManager } from './workspace-manager.js';
 import { WorkflowStore } from './workflow-store.js';
 import { LocalConfigStore } from './local-config-store.js';
@@ -124,8 +125,9 @@ Workflow Loading (in order of precedence):
   2. ./data/workflow/workflows.json
 
 Tracker Types:
-  local   - Read issues from a local JSON file (default: ./issues.json)
+  local   - Read issues from a local SQLite file (default: ./data/issues.db)
   linear  - Fetch issues from Linear API (requires LINEAR_API_KEY)
+  gitlab  - Fetch issues from GitLab (requires tracker.api_key and tracker.project_path)
 
 Example:
   symphony                           # Auto-detect workflow
@@ -149,6 +151,11 @@ function createIssueTracker(config: ServiceConfig): IssueTrackerClient {
   if (kind === 'linear') {
     log.info('Using Linear issue tracker');
     return new LinearIssueTrackerClient(config);
+  }
+
+  if (kind === 'gitlab') {
+    log.info('Using GitLab issue tracker', { projectPath: config.trackerProjectPath, host: config.trackerGitLabHost });
+    return new GitLabIssueTrackerClient(config);
   }
 
   throw new Error(`Unknown tracker kind: ${kind}`);
