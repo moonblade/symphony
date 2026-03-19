@@ -655,9 +655,9 @@ export class WebServer {
 
     this.app.put('/api/settings', async (req, res) => {
       try {
-        const { privateWorkflowsDir, privateWorkflowsEnabled, workflowBadgeMode, theme, safeExecute } = req.body;
+        const { privateWorkflowsDir, privateWorkflowsEnabled, workflowBadgeMode, theme, safeExecute, workflowsRootDir } = req.body;
         
-        const updates: { privateWorkflowsDir?: string | null; privateWorkflowsEnabled?: boolean; workflowBadgeMode?: 'dot' | 'border'; theme?: 'system' | 'light' | 'dark'; safeExecute?: boolean } = {};
+        const updates: { privateWorkflowsDir?: string | null; privateWorkflowsEnabled?: boolean; workflowBadgeMode?: 'dot' | 'border'; theme?: 'system' | 'light' | 'dark'; safeExecute?: boolean; workflowsRootDir?: string | null } = {};
         
         if (privateWorkflowsDir !== undefined) {
           updates.privateWorkflowsDir = privateWorkflowsDir;
@@ -674,11 +674,17 @@ export class WebServer {
         if (safeExecute !== undefined) {
           updates.safeExecute = safeExecute;
         }
+        if (workflowsRootDir !== undefined) {
+          updates.workflowsRootDir = workflowsRootDir;
+        }
         
         const config = await this.localConfigStore.updateConfig(updates);
         
         const privateDir = await this.localConfigStore.getPrivateWorkflowsDir();
         this.workflowStore.setPrivateWorkflowsDir(privateDir);
+
+        const workflowsRoot = await this.localConfigStore.getWorkflowsRootDir();
+        this.workflowStore.setWorkflowsDir(workflowsRoot, this.config.workflowsDir);
         
         this.broadcast({ type: 'settings_updated' });
         this.broadcast({ type: 'workflows_updated' });
