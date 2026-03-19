@@ -1,0 +1,40 @@
+{
+  "workflows": [
+    {
+      "id": "sample-workflow",
+      "name": "Sample Workflow",
+      "description": "A sample workflow to get started - copy and customize",
+      "template_file": "sample-workflow.md",
+      "config": {
+        "tracker": {
+          "kind": "local",
+          "issues_path": "./data/issues.db",
+          "active_states": ["Todo", "In Progress"],
+          "terminal_states": ["Done", "Closed", "Cancelled"],
+          "auto_transition": {
+            "on_start": "In Progress",
+            "on_complete": "Done"
+          }
+        },
+        "polling": {
+          "interval_ms": 30000
+        },
+        "workspace": {
+          "root": "./workspaces"
+        },
+        "agent": {
+          "max_concurrent_agents": 3,
+          "max_turns": 20
+        },
+        "opencode": {
+          "model": "claude-sonnet-4-20250514",
+          "turn_timeout_ms": 3600000,
+          "stall_timeout_ms": 300000
+        }
+      },
+      "is_default": true,
+      "created_at": "2024-01-01T00:00:00.000Z",
+      "updated_at": "2024-01-01T00:00:00.000Z"
+    }
+  ]
+}
