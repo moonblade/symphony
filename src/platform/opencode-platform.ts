@@ -190,6 +190,9 @@ export class OpenCodePlatform implements Platform {
         parts: [{ type: 'text', text: prompt }],
         model,
         agent,
+        // When a model is explicitly set, override the agent's default variant
+        // to prevent the server from appending suffixes like "-high" to the model ID
+        ...(model ? { variant: '' } : {}),
       }).catch((err: Error) => {
         log.error('Prompt API call failed', { sessionId, error: err.message });
         throw err;
@@ -285,6 +288,7 @@ export class OpenCodePlatform implements Platform {
       parts: [{ type: 'text', text: message }],
       model,
       agent,
+      ...(model ? { variant: '' } : {}),
     }).catch((err: Error) => {
       log.error('Failed to send message to session', { sessionId, error: err.message });
     });
