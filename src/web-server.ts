@@ -127,7 +127,6 @@ export class WebServer {
       if (existsSync(stylesPath)) {
         try {
           res.type('text/css');
-          // If the versioned URL matches the current nonce, allow long-term caching
           if (req.query['v'] === this.startupNonce) {
             res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
           } else {
