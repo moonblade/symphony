@@ -8,6 +8,8 @@
  * Tools:
  *   - symphony_add_comment: Add a comment to an issue
  *   - symphony_update_state: Update an issue's state
+ *   - symphony_check_health: Check service health (status + uptime)
+ *   - symphony_restart: Health-check then restart the service
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
@@ -320,6 +322,26 @@ const getWorkflowTool = {
       },
     },
     required: ['workflow_id'],
+  },
+};
+
+const checkHealthTool = {
+  name: 'symphony_check_health',
+  description: 'Check if the Symphony service is running and healthy. Returns status and uptime.',
+  inputSchema: {
+    type: 'object' as const,
+    properties: {},
+    required: [],
+  },
+};
+
+const restartTool = {
+  name: 'symphony_restart',
+  description: 'Restart the Symphony service. Performs a health check first to confirm the service is reachable, then triggers a graceful restart. The service must be running under a process manager (e.g. scripts/service.sh) that restarts on exit code 100.',
+  inputSchema: {
+    type: 'object' as const,
+    properties: {},
+    required: [],
   },
 };
 
@@ -671,6 +693,36 @@ async function handleGetWorkflow(input: GetWorkflowInput): Promise<{
   }
 }
 
+async function handleCheckHealth(): Promise<{ success: boolean; status?: string; uptime?: number; error?: string }> {
+  try {
+    const response = await fetch(`${SYMPHONY_API_URL}/api/health`);
+    if (!response.ok) {
+      return { success: false, error: `Health check failed: HTTP ${response.status}` };
+    }
+    const data = await response.json() as { status: string; uptime: number };
+    return { success: true, status: data.status, uptime: data.uptime };
+  } catch (error) {
+    return { success: false, error: `Health check failed: ${(error as Error).message}` };
+  }
+}
+
+async function handleRestart(): Promise<{ success: boolean; status?: string; uptime?: number; error?: string }> {
+  const health = await handleCheckHealth();
+  if (!health.success) {
+    return { success: false, error: `Cannot restart — service is not healthy: ${health.error}` };
+  }
+
+  try {
+    const response = await fetch(`${SYMPHONY_API_URL}/api/restart`, { method: 'POST' });
+    if (!response.ok) {
+      return { success: false, error: `Restart request failed: HTTP ${response.status}` };
+    }
+    return { success: true, status: 'restarting' };
+  } catch (error) {
+    return { success: false, error: `Restart request failed: ${(error as Error).message}` };
+  }
+}
+
 // Create MCP server
 const server = new Server(
   {
@@ -697,7 +749,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       listWorkflowsTool,
       createWorkflowTool,
       archiveIssueTool,
-      getWorkflowTool
+      getWorkflowTool,
+      checkHealthTool,
+      restartTool,
     ],
   };
 });
@@ -802,6 +856,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case 'symphony_get_workflow': {
         const result = await handleGetWorkflow(args as unknown as GetWorkflowInput);
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          isError: !result.success,
+        };
+      }
+
+      case 'symphony_check_health': {
+        const result = await handleCheckHealth();
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          isError: !result.success,
+        };
+      }
+
+      case 'symphony_restart': {
+        const result = await handleRestart();
         return {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
           isError: !result.success,
