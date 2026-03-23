@@ -569,7 +569,7 @@ export class WebServer {
 
         await this.issueTracker.addComment(issueId, 'agent', `**Handover Notes:**\n${notes}`);
 
-        const sessionTerminated = await this.orchestrator.terminateSession(issueId);
+        const sessionTerminated = await this.orchestrator.terminateSession(issueId, 30000, true);
 
         this.broadcastIssuesUpdated();
         this.broadcast({ type: 'comments_updated', data: { issueId } });
