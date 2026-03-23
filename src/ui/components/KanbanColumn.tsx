@@ -130,6 +130,7 @@ export function KanbanColumn({
               workflowBadgeMode={workflowBadgeMode}
               workflowColorOverride={issue.workflowId ? workflowColorMap?.[issue.workflowId] : undefined}
               isSelected={selectedCardId === issue.id}
+              isDone={columnState === 'Done'}
               onClick={() => onCardClick(issue.id)}
               onArchive={() => onArchiveCard(issue.id)}
             />
