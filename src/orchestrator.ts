@@ -1441,7 +1441,7 @@ export class Orchestrator {
     return await entry.runner.sendMessage(message);
   }
 
-  async terminateSession(issueId: string, graceMs = 30000): Promise<boolean> {
+  async terminateSession(issueId: string, graceMs = 30000, agentInitiated = false): Promise<boolean> {
     const entry = this.state.running.get(issueId);
     if (!entry) {
       log.debug('No running session to terminate', { issueId });
@@ -1455,6 +1455,7 @@ export class Orchestrator {
       issueId, 
       identifier: entry.issueIdentifier,
       graceMs,
+      agentInitiated,
     });
 
     if (entry.handoverRequested) {
@@ -1468,27 +1469,47 @@ export class Orchestrator {
 
     entry.handoverRequested = true;
 
-    if (entry.runner) {
-      entry.runner.sendMessage(
-        `Symphony orchestrator: Handover initiated. Session terminating in ${graceMs / 1000} seconds.`
-      ).catch(() => {});
-    }
-
-    entry.handoverDeadline = new Date(Date.now() + graceMs);
-
     if (entry.handoverTimer) {
       clearTimeout(entry.handoverTimer);
     }
 
-    entry.handoverTimer = setTimeout(async () => {
-      log.info('Grace period expired, aborting session', { issueId, identifier: entry.issueIdentifier });
-      entry.abortController.abort();
-      this.releaseClaim(issueId);
-      if (sessionId) {
-        await this.issueTracker.deactivateSession(sessionId);
+    if (agentInitiated) {
+      // The agent explicitly called symphony_handover — it's voluntarily handing over and
+      // has already received a success response.  Abort the session promptly (after a short
+      // delay to let the HTTP response reach the agent) instead of waiting the full grace
+      // period.  This prevents the old session from continuing to run while the new workflow
+      // has already picked up the issue.
+      const abortDelayMs = 2000;
+      entry.handoverDeadline = new Date(Date.now() + abortDelayMs);
+      entry.handoverTimer = setTimeout(async () => {
+        log.info('Agent-initiated handover: aborting session', { issueId, identifier: entry.issueIdentifier });
+        entry.abortController.abort();
+        this.releaseClaim(issueId);
+        if (sessionId) {
+          await this.issueTracker.deactivateSession(sessionId);
+        }
+        await this.issueTracker.updateIssueSessionId(issueId, null);
+      }, abortDelayMs);
+    } else {
+      // Orchestrator-initiated shutdown — give the agent time to finish up gracefully.
+      if (entry.runner) {
+        entry.runner.sendMessage(
+          `Symphony orchestrator: Handover initiated. Session terminating in ${graceMs / 1000} seconds.`
+        ).catch(() => {});
       }
-      await this.issueTracker.updateIssueSessionId(issueId, null);
-    }, graceMs);
+
+      entry.handoverDeadline = new Date(Date.now() + graceMs);
+
+      entry.handoverTimer = setTimeout(async () => {
+        log.info('Grace period expired, aborting session', { issueId, identifier: entry.issueIdentifier });
+        entry.abortController.abort();
+        this.releaseClaim(issueId);
+        if (sessionId) {
+          await this.issueTracker.deactivateSession(sessionId);
+        }
+        await this.issueTracker.updateIssueSessionId(issueId, null);
+      }, graceMs);
+    }
 
     if (sessionId) {
       await this.issueTracker.deactivateSession(sessionId);
