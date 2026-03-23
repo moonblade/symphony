@@ -62,6 +62,8 @@ export interface Workflow {
   config?: WorkflowConfig;
   maxConcurrentAgents?: number;
   color?: string | null;
+  nextWorkflowId?: string | null;
+  hiddenFromPicker?: boolean;
   createdAt: string;
   updatedAt: string;
 }

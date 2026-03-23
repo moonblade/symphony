@@ -143,6 +143,7 @@ export function App(): JSX.Element {
       {showWorkflowModal && (
         <WorkflowModal
           workflow={editingWorkflow ?? undefined}
+          workflows={state.workflows}
           onClose={handleCloseWorkflowModal}
           onSave={handleWorkflowSaved}
         />

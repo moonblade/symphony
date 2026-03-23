@@ -683,7 +683,7 @@ export class WebServer {
 
     this.app.post('/api/workflows', async (req, res) => {
       try {
-        const { name, description, promptTemplate, config, isDefault, maxConcurrentAgents, color } = req.body;
+        const { name, description, promptTemplate, config, isDefault, maxConcurrentAgents, color, nextWorkflowId, hiddenFromPicker } = req.body;
         
         if (!name || !promptTemplate) {
           res.status(400).json({ error: 'Name and promptTemplate are required' });
@@ -698,6 +698,8 @@ export class WebServer {
           isDefault: isDefault ?? false,
           maxConcurrentAgents: typeof maxConcurrentAgents === 'number' ? maxConcurrentAgents : 1,
           color: typeof color === 'string' ? color : undefined,
+          nextWorkflowId: typeof nextWorkflowId === 'string' ? nextWorkflowId : (nextWorkflowId === null ? null : undefined),
+          hiddenFromPicker: typeof hiddenFromPicker === 'boolean' ? hiddenFromPicker : undefined,
         });
 
         this.broadcast({ type: 'workflows_updated' });
@@ -709,7 +711,7 @@ export class WebServer {
 
     this.app.put('/api/workflows/:id', async (req, res) => {
       try {
-        const { name, description, promptTemplate, config, isDefault, maxConcurrentAgents, color } = req.body;
+        const { name, description, promptTemplate, config, isDefault, maxConcurrentAgents, color, nextWorkflowId, hiddenFromPicker } = req.body;
         
         const workflow = await this.workflowStore.updateWorkflow(req.params.id, {
           name,
@@ -719,6 +721,8 @@ export class WebServer {
           isDefault,
           maxConcurrentAgents,
           color: color !== undefined ? (typeof color === 'string' ? color : null) : undefined,
+          nextWorkflowId: nextWorkflowId !== undefined ? (typeof nextWorkflowId === 'string' ? nextWorkflowId : null) : undefined,
+          hiddenFromPicker: typeof hiddenFromPicker === 'boolean' ? hiddenFromPicker : undefined,
         });
 
         if (!workflow) {
@@ -1077,6 +1081,8 @@ export class WebServer {
       isPrivate: workflow.isPrivate,
       maxConcurrentAgents: workflow.maxConcurrentAgents,
       color: workflow.color ?? null,
+      nextWorkflowId: workflow.nextWorkflowId,
+      hiddenFromPicker: workflow.hiddenFromPicker,
       createdAt: workflow.createdAt.toISOString(),
       updatedAt: workflow.updatedAt.toISOString(),
     };

@@ -86,6 +86,11 @@ export interface StoredWorkflow {
   isPrivate: boolean;
   maxConcurrentAgents: number;
   color?: string;
+  /** ID of the workflow to chain after this one completes successfully */
+  nextWorkflowId: string | null;
+  /** If true, this workflow is hidden from the workflow picker when creating/editing cards.
+   *  Used for chained workflows that should only be reached automatically. */
+  hiddenFromPicker: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
