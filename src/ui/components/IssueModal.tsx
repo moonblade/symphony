@@ -250,26 +250,41 @@ export function IssueModal({ issue, onClose, onSave }: IssueModalProps) {
           {issue.sessions.map((session, idx) => {
             const link = getSessionLink(session.sessionId, session.workspacePath, session.worktreeRoot);
             const isActive = session.isActive;
-            return (
-              <a
-                key={session.id || idx}
-                href={link || '#'}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => { if (!link) e.preventDefault(); }}
-                className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
-                  isActive 
-                    ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/60' 
-                    : 'bg-gray-100 dark:bg-[#3d3d3d] text-gray-600 dark:text-[#a0a0a0] hover:bg-gray-200 dark:hover:bg-[#4d4d4d]'
-                }`}
-                title={`${session.workflowName || 'Session'} - ${formatDateTime(session.createdAt)}`}
-              >
+            const badgeContent = (
+              <>
                 {isActive && (
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
                 )}
                 <span className="truncate max-w-[80px]">{session.workflowName || 'Session'}</span>
-                <span className="text-[10px] opacity-60">↗</span>
+                {link && <span className="text-[10px] opacity-60">↗</span>}
+              </>
+            );
+            const badgeClass = `inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
+              isActive
+                ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/60'
+                : link
+                  ? 'bg-gray-100 dark:bg-[#3d3d3d] text-gray-600 dark:text-[#a0a0a0] hover:bg-gray-200 dark:hover:bg-[#4d4d4d]'
+                  : 'bg-gray-100 dark:bg-[#3d3d3d] text-gray-400 dark:text-[#606060] cursor-default'
+            }`;
+            return link ? (
+              <a
+                key={session.id || idx}
+                href={link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={badgeClass}
+                title={`${session.workflowName || 'Session'} - ${formatDateTime(session.createdAt)}`}
+              >
+                {badgeContent}
               </a>
+            ) : (
+              <span
+                key={session.id || idx}
+                className={badgeClass}
+                title={`${session.workflowName || 'Session'} - ${formatDateTime(session.createdAt)}`}
+              >
+                {badgeContent}
+              </span>
             );
           })}
         </div>
