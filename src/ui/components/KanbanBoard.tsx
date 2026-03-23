@@ -153,31 +153,29 @@ export function KanbanBoard({
     <div className="kanban-container flex-1 flex flex-col bg-[#f8f7f6] dark:bg-[#191919]">
       <div 
         ref={boardRef}
-        className="kanban-board flex-1 overflow-x-auto p-5"
+        className="kanban-board p-4"
       >
-        <div className="flex gap-3 min-h-[calc(100vh-200px)]">
-          {KANBAN_COLUMNS.map((col) => (
-            <KanbanColumn
-              key={col}
-              columnState={col}
-              issues={issuesByColumn(col)}
-              runningAgents={runningAgents}
-              pendingInputRequests={pendingInputRequests}
-              workflowBadgeMode={workflowBadgeMode}
-              workflowColorMap={workflowColorMap}
-              selectedCardId={selectedCardId}
-              quickAddPosition={quickAddPosition?.columnState === col ? quickAddPosition : null}
-              onCardClick={handleCardSelect}
-              onCardDrop={handleCardDrop}
-              onAddCard={onAddCard}
-              onArchiveCard={handleArchiveCard}
-              onQuickAddSave={handleQuickAddSave}
-              onQuickAddCancel={handleQuickAddCancel}
-              onHoverEnter={handleColumnHoverEnter}
-              onHoverLeave={handleColumnHoverLeave}
-            />
-          ))}
-        </div>
+        {KANBAN_COLUMNS.map((col) => (
+          <KanbanColumn
+            key={col}
+            columnState={col}
+            issues={issuesByColumn(col)}
+            runningAgents={runningAgents}
+            pendingInputRequests={pendingInputRequests}
+            workflowBadgeMode={workflowBadgeMode}
+            workflowColorMap={workflowColorMap}
+            selectedCardId={selectedCardId}
+            quickAddPosition={quickAddPosition?.columnState === col ? quickAddPosition : null}
+            onCardClick={handleCardSelect}
+            onCardDrop={handleCardDrop}
+            onAddCard={onAddCard}
+            onArchiveCard={handleArchiveCard}
+            onQuickAddSave={handleQuickAddSave}
+            onQuickAddCancel={handleQuickAddCancel}
+            onHoverEnter={handleColumnHoverEnter}
+            onHoverLeave={handleColumnHoverLeave}
+          />
+        ))}
       </div>
       
       <div className="column-indicator">
