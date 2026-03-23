@@ -67,12 +67,14 @@ declare global {
 }
 
 function SessionLink({ session }: { session: IssueSession }) {
+  const urlPath = session.worktreeRoot ?? session.workspacePath;
+  const hasLink = !!(window.opencodePort && session.sessionId && urlPath);
+
   const handleClick = (e: JSX.TargetedMouseEvent<HTMLSpanElement>) => {
     e.stopPropagation();
-    const urlPath = session.worktreeRoot ?? session.workspacePath;
-    if (window.opencodePort && session.sessionId && urlPath) {
+    if (hasLink) {
       window.open(
-        buildSessionUrl(window.opencodePort, urlPath, session.sessionId),
+        buildSessionUrl(window.opencodePort!, urlPath!, session.sessionId),
         '_blank'
       );
     }
@@ -82,8 +84,11 @@ function SessionLink({ session }: { session: IssueSession }) {
 
   return (
     <span
-      class="text-gray-500 dark:text-[#a0a0a0] hover:text-blue-600 cursor-pointer truncate max-w-[80px]"
-      onClick={handleClick}
+      class={hasLink
+        ? 'text-gray-500 dark:text-[#a0a0a0] hover:text-blue-600 cursor-pointer truncate max-w-[80px]'
+        : 'text-gray-400 dark:text-[#606060] cursor-default truncate max-w-[80px]'
+      }
+      onClick={hasLink ? handleClick : undefined}
       title={label}
     >
       {label}
