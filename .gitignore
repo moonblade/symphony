@@ -18,6 +18,8 @@ data/workflow/*
 !data/workflow/example.md
 !data/workflow/symphony-codereview.md
 !data/workflow/symphony-updates.md
+!data/workflow/homelab-update.md
+!data/workflow/homelab-review.md
 
 # Agent workspaces
 rotten-moth/
