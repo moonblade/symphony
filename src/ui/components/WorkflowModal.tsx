@@ -4,13 +4,14 @@ import { api } from '../api.js';
 
 interface WorkflowModalProps {
   workflow?: Workflow;
+  workflows?: Workflow[];
   onClose: () => void;
   onSave: () => void;
 }
 
 type Tab = 'general' | 'configuration';
 
-export function WorkflowModal({ workflow, onClose, onSave }: WorkflowModalProps) {
+export function WorkflowModal({ workflow, workflows = [], onClose, onSave }: WorkflowModalProps) {
   const isPrivate = workflow?.isPrivate === true;
   const [activeTab, setActiveTab] = useState<Tab>('general');
   const [name, setName] = useState(workflow?.name || '');
@@ -23,6 +24,8 @@ export function WorkflowModal({ workflow, onClose, onSave }: WorkflowModalProps)
   const [maxConcurrentAgents, setMaxConcurrentAgents] = useState<number>(workflow?.maxConcurrentAgents ?? 1);
   const [color, setColor] = useState<string>(workflow?.color || '');
   const [workspaceRoot, setWorkspaceRoot] = useState<string>(workflow?.config?.workspace?.root || '');
+  const [nextWorkflowId, setNextWorkflowId] = useState<string>(workflow?.nextWorkflowId || '');
+  const [hiddenFromPicker, setHiddenFromPicker] = useState<boolean>(workflow?.hiddenFromPicker ?? false);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -63,6 +66,8 @@ export function WorkflowModal({ workflow, onClose, onSave }: WorkflowModalProps)
         config,
         maxConcurrentAgents,
         color: color || null,
+        nextWorkflowId: nextWorkflowId || null,
+        hiddenFromPicker,
       };
 
       if (workflow) {
@@ -215,6 +220,44 @@ export function WorkflowModal({ workflow, onClose, onSave }: WorkflowModalProps)
                     Set as default workflow
                   </label>
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-[#a0a0a0] mb-1">Next Workflow (Chain)</label>
+                  <select
+                    value={nextWorkflowId}
+                    onChange={(e) => setNextWorkflowId(e.currentTarget.value)}
+                    className="w-full p-2 border border-gray-300 dark:border-[#3d3d3d] rounded focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-[#2d2d2d] text-gray-900 dark:text-[#e0e0e0]"
+                  >
+                    <option value="">(None — no chaining)</option>
+                    {workflows
+                      .filter(w => w.id !== workflow?.id)
+                      .map(w => (
+                        <option key={w.id} value={w.id}>{w.name}</option>
+                      ))}
+                  </select>
+                  <p className="text-xs text-gray-500 dark:text-[#808080] mt-1">
+                    When an agent finishes this workflow successfully, the card is automatically moved to the selected workflow and reset to Todo.
+                  </p>
+                </div>
+
+                {(() => {
+                  const isChainedTarget = workflow && workflows.some(w => w.id !== workflow.id && w.nextWorkflowId === workflow.id);
+                  if (!isChainedTarget && !hiddenFromPicker) return null;
+                  return (
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="hiddenFromPicker"
+                        checked={hiddenFromPicker}
+                        onChange={(e) => setHiddenFromPicker(e.currentTarget.checked)}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-[#3d3d3d] rounded"
+                      />
+                      <label htmlFor="hiddenFromPicker" className="ml-2 block text-sm text-gray-900 dark:text-[#e0e0e0]">
+                        Hide from workflow picker (chained workflows only)
+                      </label>
+                    </div>
+                  );
+                })()}
               </div>
             )}
 

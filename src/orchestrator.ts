@@ -1141,6 +1141,41 @@ export class Orchestrator {
         } : undefined,
       } as AgentCompletedEvent);
 
+      const currentWorkflow = await this.workflowStore.getWorkflow(entry?.workflowId ?? issue.workflowId ?? 'default-workflow');
+      const nextWorkflowId = currentWorkflow?.nextWorkflowId ?? null;
+
+      if (nextWorkflowId) {
+        log.info('Chaining to next workflow', {
+          issueId: issue.id,
+          identifier: issue.identifier,
+          fromWorkflow: currentWorkflow?.id,
+          toWorkflow: nextWorkflowId,
+        });
+        try {
+          await this.issueTracker.updateIssue(issue.id, {
+            workflowId: nextWorkflowId,
+            state: 'Todo',
+          });
+          this.onIssueUpdated?.();
+          this.emitConnectorEvent({
+            type: 'issue_state_changed',
+            timestamp: new Date(),
+            issueId: issue.id,
+            issueIdentifier: issue.identifier,
+            fromState: issue.state,
+            toState: 'Todo',
+          } as IssueStateChangedEvent);
+        } catch (err) {
+          log.error('Failed to chain to next workflow', {
+            issueId: issue.id,
+            nextWorkflowId,
+            error: (err as Error).message,
+          });
+        }
+        this.releaseClaim(issue.id);
+        return;
+      }
+
       const onCompleteState = this.config.autoTransitionOnComplete;
       if (onCompleteState) {
         await this.issueTracker.updateIssueState(issue.id, onCompleteState);

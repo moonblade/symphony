@@ -16,6 +16,8 @@ interface LocalWorkflowData {
   is_default?: boolean;
   max_concurrent_agents?: number;
   color?: string;
+  next_workflow_id?: string | null;
+  hidden_from_picker?: boolean;
   created_at?: string;
   updated_at?: string;
 }
@@ -209,6 +211,8 @@ export class WorkflowStore {
         isPrivate,
         maxConcurrentAgents: data.max_concurrent_agents ?? 1,
         color: data.color,
+        nextWorkflowId: data.next_workflow_id ?? null,
+        hiddenFromPicker: data.hidden_from_picker ?? false,
         createdAt: data.created_at ? new Date(data.created_at) : new Date(),
         updatedAt: data.updated_at ? new Date(data.updated_at) : new Date(),
       });
@@ -356,6 +360,8 @@ export class WorkflowStore {
         isPrivate: false,
         maxConcurrentAgents: data.max_concurrent_agents ?? 1,
         color: data.color,
+        nextWorkflowId: data.next_workflow_id ?? null,
+        hiddenFromPicker: data.hidden_from_picker ?? false,
         createdAt: data.created_at ? new Date(data.created_at) : new Date(),
         updatedAt: data.updated_at ? new Date(data.updated_at) : new Date(),
       };
@@ -381,6 +387,8 @@ export class WorkflowStore {
       isPrivate: true,
       maxConcurrentAgents: privateData.max_concurrent_agents ?? 1,
       color: privateData.color,
+      nextWorkflowId: privateData.next_workflow_id ?? null,
+      hiddenFromPicker: privateData.hidden_from_picker ?? false,
       createdAt: privateData.created_at ? new Date(privateData.created_at) : new Date(),
       updatedAt: privateData.updated_at ? new Date(privateData.updated_at) : new Date(),
     };
@@ -399,6 +407,8 @@ export class WorkflowStore {
     isDefault?: boolean;
     maxConcurrentAgents?: number;
     color?: string;
+    nextWorkflowId?: string | null;
+    hiddenFromPicker?: boolean;
   }): Promise<StoredWorkflow> {
     await this.ensureWorkflowsDir();
     
@@ -427,6 +437,8 @@ export class WorkflowStore {
       is_default: data.isDefault ?? false,
       max_concurrent_agents: data.maxConcurrentAgents ?? 1,
       color: data.color,
+      next_workflow_id: data.nextWorkflowId ?? null,
+      hidden_from_picker: data.hiddenFromPicker ?? false,
       created_at: now.toISOString(),
       updated_at: now.toISOString(),
     };
@@ -450,6 +462,8 @@ export class WorkflowStore {
       isPrivate: false,
       maxConcurrentAgents: data.maxConcurrentAgents ?? 1,
       color: data.color,
+      nextWorkflowId: data.nextWorkflowId ?? null,
+      hiddenFromPicker: data.hiddenFromPicker ?? false,
       createdAt: now,
       updatedAt: now,
     };
@@ -463,6 +477,8 @@ export class WorkflowStore {
     isDefault: boolean;
     maxConcurrentAgents: number;
     color: string | null;
+    nextWorkflowId: string | null;
+    hiddenFromPicker: boolean;
   }>): Promise<StoredWorkflow | null> {
     const workflowsData = await this.loadWorkflowsJson();
     const index = workflowsData.findIndex(w => w.id === id);
@@ -491,6 +507,8 @@ export class WorkflowStore {
       if (updates.isDefault !== undefined) workflowData.is_default = updates.isDefault;
       if (updates.maxConcurrentAgents !== undefined) workflowData.max_concurrent_agents = updates.maxConcurrentAgents;
       if (updates.color !== undefined) workflowData.color = updates.color ?? undefined;
+      if (updates.nextWorkflowId !== undefined) workflowData.next_workflow_id = updates.nextWorkflowId;
+      if (updates.hiddenFromPicker !== undefined) workflowData.hidden_from_picker = updates.hiddenFromPicker;
       workflowData.updated_at = new Date().toISOString();
 
       if (updates.promptTemplate !== undefined) {
@@ -514,6 +532,8 @@ export class WorkflowStore {
         isPrivate: false,
         maxConcurrentAgents: workflowData.max_concurrent_agents ?? 1,
         color: workflowData.color,
+        nextWorkflowId: workflowData.next_workflow_id ?? null,
+        hiddenFromPicker: workflowData.hidden_from_picker ?? false,
         createdAt: workflowData.created_at ? new Date(workflowData.created_at) : new Date(),
         updatedAt: new Date(workflowData.updated_at!),
       };
@@ -546,6 +566,8 @@ export class WorkflowStore {
     if (updates.isDefault !== undefined) privateWorkflowData.is_default = updates.isDefault;
     if (updates.maxConcurrentAgents !== undefined) privateWorkflowData.max_concurrent_agents = updates.maxConcurrentAgents;
     if (updates.color !== undefined) privateWorkflowData.color = updates.color ?? undefined;
+    if (updates.nextWorkflowId !== undefined) privateWorkflowData.next_workflow_id = updates.nextWorkflowId;
+    if (updates.hiddenFromPicker !== undefined) privateWorkflowData.hidden_from_picker = updates.hiddenFromPicker;
     privateWorkflowData.updated_at = new Date().toISOString();
 
     if (updates.promptTemplate !== undefined) {
@@ -569,6 +591,8 @@ export class WorkflowStore {
       isPrivate: true,
       maxConcurrentAgents: privateWorkflowData.max_concurrent_agents ?? 1,
       color: privateWorkflowData.color,
+      nextWorkflowId: privateWorkflowData.next_workflow_id ?? null,
+      hiddenFromPicker: privateWorkflowData.hidden_from_picker ?? false,
       createdAt: privateWorkflowData.created_at ? new Date(privateWorkflowData.created_at) : new Date(),
       updatedAt: new Date(privateWorkflowData.updated_at!),
     };
