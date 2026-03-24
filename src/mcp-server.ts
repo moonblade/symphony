@@ -7,6 +7,7 @@
  * 
  * Tools:
  *   - symphony_add_comment: Add a comment to an issue
+ *   - symphony_get_comments: Get comments for an issue
  *   - symphony_update_state: Update an issue's state
  *   - symphony_check_health: Check service health (status + uptime)
  *   - symphony_restart: Health-check then restart the service
@@ -25,6 +26,10 @@ const SYMPHONY_API_URL = process.env.SYMPHONY_API_URL || 'http://localhost:3000'
 interface AddCommentInput {
   issue_id: string;
   content: string;
+}
+
+interface GetCommentsInput {
+  issue_id: string;
 }
 
 interface UpdateStateInput {
@@ -102,6 +107,21 @@ const addCommentTool = {
       },
     },
     required: ['issue_id', 'content'],
+  },
+};
+
+const getCommentsTool = {
+  name: 'symphony_get_comments',
+  description: 'Get all comments for a Symphony issue/card.',
+  inputSchema: {
+    type: 'object' as const,
+    properties: {
+      issue_id: {
+        type: 'string',
+        description: 'The ID of the issue to get comments for (accepts both internal ID and human-readable identifier like "optimistic-louse")',
+      },
+    },
+    required: ['issue_id'],
   },
 };
 
@@ -448,6 +468,22 @@ async function handleAddComment(input: AddCommentInput): Promise<{ success: bool
   }
 }
 
+async function handleGetComments(input: GetCommentsInput): Promise<{ success: boolean; comments?: Array<{ id: string; author: string; content: string; createdAt: string }>; error?: string }> {
+  try {
+    const response = await fetch(`${SYMPHONY_API_URL}/api/issues/${input.issue_id}/comments`);
+
+    if (!response.ok) {
+      const error = await response.text();
+      return { success: false, error: `Failed to get comments: ${error}` };
+    }
+
+    const comments = await response.json();
+    return { success: true, comments };
+  } catch (error) {
+    return { success: false, error: `Failed to get comments: ${(error as Error).message}` };
+  }
+}
+
 async function handleUpdateState(input: UpdateStateInput): Promise<{ success: boolean; error?: string }> {
   try {
     const response = await fetch(`${SYMPHONY_API_URL}/api/issues/${input.issue_id}`, {
@@ -740,7 +776,8 @@ const server = new Server(
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: [
-      addCommentTool, 
+      addCommentTool,
+      getCommentsTool,
       updateStateTool, 
       handoverTool,
       createIssueTool, 
@@ -764,6 +801,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     switch (name) {
       case 'symphony_add_comment': {
         const result = await handleAddComment(args as unknown as AddCommentInput);
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          isError: !result.success,
+        };
+      }
+
+      case 'symphony_get_comments': {
+        const result = await handleGetComments(args as unknown as GetCommentsInput);
         return {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
           isError: !result.success,
