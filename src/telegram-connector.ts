@@ -21,6 +21,7 @@ export class TelegramConnector implements Connector {
   private localConfigStore: LocalConfigStore;
   private chatManager: ChatManager;
   private allowedSenders: Set<string> = new Set();
+  private knownChatIds: Set<number> = new Set();
   private telegramInitiatedIssues: Set<string> = new Set();
 
   constructor(options: TelegramConnectorOptions) {
@@ -106,6 +107,8 @@ export class TelegramConnector implements Connector {
 
       const text = msg.text?.trim() ?? '';
       const chatId = msg.chat.id;
+
+      this.knownChatIds.add(chatId);
 
       if (!text) return;
 
@@ -278,12 +281,18 @@ export class TelegramConnector implements Connector {
   }
 
   private getAllowedChatIds(): number[] {
-    if (!this.config?.allowlist) return [];
-    return this.config.allowlist
-      .split(',')
-      .map(s => s.trim())
-      .filter(s => /^-?\d+$/.test(s))
-      .map(s => parseInt(s, 10));
+    const ids = new Set<number>(this.knownChatIds);
+
+    if (this.config?.allowlist) {
+      for (const entry of this.config.allowlist.split(',')) {
+        const trimmed = entry.trim();
+        if (/^-?\d+$/.test(trimmed)) {
+          ids.add(parseInt(trimmed, 10));
+        }
+      }
+    }
+
+    return Array.from(ids);
   }
 
   private isAllowed(msg: TelegramBot.Message): boolean {
