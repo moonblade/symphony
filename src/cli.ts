@@ -21,6 +21,7 @@ import { initLogBuffer } from './log-buffer.js';
 import { ConnectorManager } from './connector-manager.js';
 import { KanbanConnector } from './kanban-connector.js';
 import { TelegramConnector } from './telegram-connector.js';
+import { ChatManager } from './chat-manager.js';
 
 const log = new Logger('cli');
 
@@ -369,7 +370,12 @@ async function main(): Promise<void> {
     connectorManager.register(kanbanConnector);
   }
 
-  const telegramConnector = new TelegramConnector({ localConfigStore });
+  const chatManager = new ChatManager({
+    workflowStore,
+    dataDir: config.dataDir,
+  });
+
+  const telegramConnector = new TelegramConnector({ localConfigStore, chatManager });
   connectorManager.register(telegramConnector);
 
   await connectorManager.startAll();

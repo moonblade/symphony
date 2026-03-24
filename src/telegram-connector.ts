@@ -1,12 +1,14 @@
 import TelegramBot from 'node-telegram-bot-api';
 import { Connector, ConnectorContext, ConnectorEvent, IssueStateChangedEvent, AgentCompletedEvent, AgentFailedEvent, InputRequestedEvent, CommentAddedEvent, IssueCreatedEvent } from './connector.js';
 import { LocalConfigStore, TelegramConfig, TelegramNotificationLevel } from './local-config-store.js';
+import { ChatManager } from './chat-manager.js';
 import { Logger } from './logger.js';
 
 const log = new Logger('telegram-connector');
 
 export interface TelegramConnectorOptions {
   localConfigStore: LocalConfigStore;
+  chatManager: ChatManager;
 }
 
 export class TelegramConnector implements Connector {
@@ -17,11 +19,13 @@ export class TelegramConnector implements Connector {
   private context: ConnectorContext | null = null;
   private config: TelegramConfig | null = null;
   private localConfigStore: LocalConfigStore;
+  private chatManager: ChatManager;
   private allowedSenders: Set<string> = new Set();
   private telegramInitiatedIssues: Set<string> = new Set();
 
   constructor(options: TelegramConnectorOptions) {
     this.localConfigStore = options.localConfigStore;
+    this.chatManager = options.chatManager;
   }
 
   async start(context: ConnectorContext): Promise<void> {
@@ -179,14 +183,41 @@ export class TelegramConnector implements Connector {
       return;
     }
 
-    const issue = await this.context.createIssue({
-      title: text.slice(0, 200),
-      description: text.length > 200 ? text : undefined,
-      state: 'Todo',
-    });
+    if (text.startsWith('/create ')) {
+      const title = text.slice('/create '.length).trim();
+      if (!title) {
+        await this.safeSend(chatId, 'Usage: /create <title>');
+        return;
+      }
+      const issue = await this.context.createIssue({
+        title: title.slice(0, 200),
+        description: title.length > 200 ? title : undefined,
+        state: 'Todo',
+      });
+      this.telegramInitiatedIssues.add(issue.id);
+      await this.safeSend(chatId, `Card created: [${issue.identifier}] ${issue.title}`);
+      return;
+    }
 
-    this.telegramInitiatedIssues.add(issue.id);
-    await this.safeSend(chatId, `Card created: [${issue.identifier}] ${issue.title}`);
+    await this.handleChatMessage(chatId, text);
+  }
+
+  private async handleChatMessage(chatId: number, text: string): Promise<void> {
+    try {
+      await this.safeSend(chatId, '⏳');
+
+      const response = await this.chatManager.sendMessage(text);
+      const reply = response.message.trim();
+
+      if (reply) {
+        await this.safeSend(chatId, reply);
+      } else {
+        await this.safeSend(chatId, 'No response from chat assistant.');
+      }
+    } catch (err) {
+      log.warn('Chat message failed', { error: (err as Error).message });
+      await this.safeSend(chatId, `Chat error: ${(err as Error).message}`);
+    }
   }
 
   private handleIssueCreated(event: IssueCreatedEvent): void {
@@ -295,12 +326,13 @@ export class TelegramConnector implements Connector {
       'Symphony Telegram Bot',
       '',
       'Commands:',
+      '/create <title> - Create a new card',
       '/list - List active cards',
       '/comment <id> <message> - Add a comment to a card',
       '/input <id> <answer> - Submit input for a waiting agent',
       '/help - Show this help',
       '',
-      'Or just send any text to create a new card.',
+      'Send any text to chat with the Symphony assistant.',
     ].join('\n');
   }
 }
