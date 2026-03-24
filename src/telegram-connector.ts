@@ -206,8 +206,17 @@ export class TelegramConnector implements Connector {
   }
 
   private async handleChatMessage(chatId: number, text: string): Promise<void> {
+    // Show "typing..." indicator while waiting for a response.
+    // The action expires after ~5s so we refresh it periodically.
+    let typingInterval: ReturnType<typeof setInterval> | null = null;
+    const sendTyping = (): void => {
+      if (!this.bot) return;
+      this.bot.sendChatAction(chatId, 'typing').catch(() => {/* ignore */});
+    };
+
     try {
-      await this.safeSend(chatId, '⏳');
+      sendTyping();
+      typingInterval = setInterval(sendTyping, 4000);
 
       const response = await this.chatManager.sendMessage(text);
       const reply = response.message.trim();
@@ -220,6 +229,10 @@ export class TelegramConnector implements Connector {
     } catch (err) {
       log.warn('Chat message failed', { error: (err as Error).message });
       await this.safeSend(chatId, `Chat error: ${(err as Error).message}`);
+    } finally {
+      if (typingInterval !== null) {
+        clearInterval(typingInterval);
+      }
     }
   }
 
