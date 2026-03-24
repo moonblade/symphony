@@ -625,10 +625,12 @@ export class WebServer {
       res.json(getLogs());
     });
 
-    this.app.get('/api/workflows', async (_req, res) => {
+    this.app.get('/api/workflows', async (req, res) => {
       try {
         const workflows = await this.workflowStore.listWorkflows();
-        res.json(workflows.map(w => this.serializeWorkflow(w)));
+        const picker = req.query['picker'] === 'true';
+        const filtered = picker ? workflows.filter(w => !w.hiddenFromPicker) : workflows;
+        res.json(filtered.map(w => this.serializeWorkflow(w)));
       } catch (err) {
         res.status(500).json({ error: (err as Error).message });
       }

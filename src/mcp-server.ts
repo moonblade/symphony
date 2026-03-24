@@ -263,7 +263,12 @@ const listWorkflowsTool = {
   description: 'List all available workflows that can be assigned to issues.',
   inputSchema: {
     type: 'object' as const,
-    properties: {},
+    properties: {
+      include_hidden: {
+        type: 'boolean',
+        description: 'If true, include workflows hidden from the picker (e.g. auto-triggered chained workflows). Defaults to false.',
+      },
+    },
     required: [],
   },
 };
@@ -619,9 +624,12 @@ async function handleListIssues(input: ListIssuesInput): Promise<{ success: bool
   }
 }
 
-async function handleListWorkflows(): Promise<{ success: boolean; workflows?: Array<{ id: string; name: string; description?: string; isDefault: boolean }>; error?: string }> {
+async function handleListWorkflows(includeHidden = false): Promise<{ success: boolean; workflows?: Array<{ id: string; name: string; description?: string; isDefault: boolean; hiddenFromPicker?: boolean }>; error?: string }> {
   try {
-    const response = await fetch(`${SYMPHONY_API_URL}/api/workflows`);
+    const url = includeHidden
+      ? `${SYMPHONY_API_URL}/api/workflows`
+      : `${SYMPHONY_API_URL}/api/workflows?picker=true`;
+    const response = await fetch(url);
 
     if (!response.ok) {
       const error = await response.text();
@@ -632,11 +640,12 @@ async function handleListWorkflows(): Promise<{ success: boolean; workflows?: Ar
 
     return { 
       success: true, 
-      workflows: workflows.map((w: { id: string; name: string; description?: string; isDefault: boolean }) => ({
+      workflows: workflows.map((w: { id: string; name: string; description?: string; isDefault: boolean; hiddenFromPicker?: boolean }) => ({
         id: w.id,
         name: w.name,
         description: w.description,
         isDefault: w.isDefault,
+        hiddenFromPicker: w.hiddenFromPicker,
       }))
     };
   } catch (error) {
@@ -876,7 +885,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'symphony_list_workflows': {
-        const result = await handleListWorkflows();
+        const includeHidden = typeof args?.['include_hidden'] === 'boolean' ? args['include_hidden'] : false;
+        const result = await handleListWorkflows(includeHidden);
         return {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
           isError: !result.success,
