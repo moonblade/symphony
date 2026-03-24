@@ -26,6 +26,7 @@ const SYMPHONY_API_URL = process.env.SYMPHONY_API_URL || 'http://localhost:3000'
 interface AddCommentInput {
   issue_id: string;
   content: string;
+  author?: 'human' | 'agent';
 }
 
 interface GetCommentsInput {
@@ -104,6 +105,11 @@ const addCommentTool = {
       content: {
         type: 'string',
         description: 'The content of the comment (supports markdown)',
+      },
+      author: {
+        type: 'string',
+        enum: ['human', 'agent'],
+        description: 'The author type of the comment. Use "human" when forwarding a comment on behalf of a human (e.g. from Telegram). Defaults to "agent".',
       },
     },
     required: ['issue_id', 'content'],
@@ -451,7 +457,7 @@ async function handleAddComment(input: AddCommentInput): Promise<{ success: bool
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        author: 'agent',
+        author: input.author ?? 'agent',
         content: input.content,
       }),
     });
