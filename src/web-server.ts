@@ -1223,6 +1223,8 @@ self.addEventListener('activate', (event) => {
           .map((n) => caches.delete(n))
       ))
       .then(() => self.clients.claim())
+      .then(() => self.clients.matchAll({ type: 'window' }))
+      .then((clients) => clients.forEach((c) => c.navigate(c.url)))
   );
 });
 
@@ -1231,6 +1233,8 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
 
   if (request.method !== 'GET' || url.origin !== location.origin) return;
+
+  if (url.pathname === '/api/events' || url.pathname === '/api/chat/stream') return;
 
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(networkFirst(request, API_CACHE, 3000));
