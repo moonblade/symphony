@@ -1,4 +1,4 @@
-import { Connector, ConnectorContext, ConnectorEvent } from './connector.js';
+import { Connector, ConnectorContext, ConnectorEvent, CommentAddedEvent } from './connector.js';
 import { IssueTrackerClient, IssueCreateData } from './issue-tracker.js';
 import { Issue } from './types.js';
 import { Logger } from './logger.js';
@@ -95,7 +95,21 @@ export class ConnectorManager {
         const resolvedId = await issueTracker.resolveIssueId(issueId);
         if (!resolvedId) throw new Error(`Issue not found: ${issueId}`);
 
-        await issueTracker.addComment(resolvedId, author, content);
+        const comment = await issueTracker.addComment(resolvedId, author, content);
+
+        const issueMap = await issueTracker.fetchIssuesByIds([resolvedId]);
+        const issue = issueMap.get(resolvedId);
+        if (issue) {
+          this.emit({
+            type: 'comment_added',
+            timestamp: new Date(),
+            issueId: resolvedId,
+            issueIdentifier: issue.identifier,
+            author,
+            content,
+            commentId: comment.id,
+          } as CommentAddedEvent);
+        }
 
         if (author === 'human') {
           await this.deps.sendCommentToSession(resolvedId, content);
