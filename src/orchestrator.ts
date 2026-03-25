@@ -707,6 +707,7 @@ export class Orchestrator {
           timestamp: new Date(),
           issueId: issue.id,
           issueIdentifier: issue.identifier,
+          issueTitle: issue.title,
           fromState,
           toState: onStartState,
         } as IssueStateChangedEvent);
@@ -1162,6 +1163,7 @@ export class Orchestrator {
             timestamp: new Date(),
             issueId: issue.id,
             issueIdentifier: issue.identifier,
+            issueTitle: issue.title,
             fromState: issue.state,
             toState: 'Todo',
           } as IssueStateChangedEvent);
@@ -1274,7 +1276,7 @@ export class Orchestrator {
     log.info('Scheduled retry', { issueId, identifier, attempt, maxRetries, delay, error });
   }
 
-  private async moveToFailureState(issueId: string, identifier: string, reason: string): Promise<void> {
+  private async moveToFailureState(issueId: string, identifier: string, reason: string, issueTitle?: string): Promise<void> {
     const failureState = this.config.autoTransitionOnFailure;
     
     try {
@@ -1286,6 +1288,7 @@ export class Orchestrator {
         timestamp: new Date(),
         issueId,
         issueIdentifier: identifier,
+        issueTitle,
         fromState: 'In Progress',
         toState: failureState,
       } as IssueStateChangedEvent);
@@ -1367,7 +1370,8 @@ export class Orchestrator {
         await this.moveToFailureState(
           issueId, 
           retry.identifier, 
-          `Issue state changed to "${issue.state}" during retry. Last error: ${retry.error ?? 'Unknown'}`
+          `Issue state changed to "${issue.state}" during retry. Last error: ${retry.error ?? 'Unknown'}`,
+          issue.title
         );
         return;
       }
