@@ -112,8 +112,10 @@ export class TelegramConnector implements Connector {
 
       if (!text) return;
 
+      const replyContext = msg.reply_to_message?.text?.trim() ?? null;
+
       try {
-        await this.handleIncomingMessage(chatId, text, msg.message_id);
+        await this.handleIncomingMessage(chatId, text, msg.message_id, replyContext);
       } catch (err) {
         log.warn('Error handling Telegram message', { error: (err as Error).message });
         await this.safeSend(chatId, `Error: ${(err as Error).message}`);
@@ -125,7 +127,7 @@ export class TelegramConnector implements Connector {
     });
   }
 
-  private async handleIncomingMessage(chatId: number, text: string, _messageId: number): Promise<void> {
+  private async handleIncomingMessage(chatId: number, text: string, _messageId: number, replyContext: string | null = null): Promise<void> {
     if (!this.context) return;
 
     if (text.startsWith('/start') || text.startsWith('/help')) {
@@ -202,10 +204,10 @@ export class TelegramConnector implements Connector {
       return;
     }
 
-    await this.handleChatMessage(chatId, text);
+    await this.handleChatMessage(chatId, text, replyContext);
   }
 
-  private async handleChatMessage(chatId: number, text: string): Promise<void> {
+  private async handleChatMessage(chatId: number, text: string, replyContext: string | null = null): Promise<void> {
     // Show "typing..." indicator while waiting for a response.
     // The action expires after ~5s so we refresh it periodically.
     let typingInterval: ReturnType<typeof setInterval> | null = null;
@@ -218,7 +220,10 @@ export class TelegramConnector implements Connector {
       sendTyping();
       typingInterval = setInterval(sendTyping, 4000);
 
-      const response = await this.chatManager.sendMessage(text);
+      const messageWithContext = replyContext
+        ? `[Replying to: "${replyContext}"]\n\n${text}`
+        : text;
+      const response = await this.chatManager.sendMessage(messageWithContext);
       const reply = response.message.trim();
 
       if (reply) {
