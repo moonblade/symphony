@@ -53,6 +53,7 @@ export interface IssueStateChangedEvent extends ConnectorEvent {
   type: 'issue_state_changed';
   issueId: string;
   issueIdentifier: string;
+  issueTitle?: string;
   fromState: string;
   toState: string;
 }

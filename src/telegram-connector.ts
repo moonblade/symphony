@@ -243,8 +243,9 @@ export class TelegramConnector implements Connector {
 
   private handleStateChanged(event: IssueStateChangedEvent): void {
     if (!this.shouldNotifyCard(event.issueId, this.config?.cardNotificationLevel ?? 'all')) return;
+    const titleLine = event.issueTitle ? `\n${event.issueTitle}` : '';
     this.broadcastToAllChats(
-      `[${event.issueIdentifier}] state: ${event.fromState} → ${event.toState}`
+      `[${event.issueIdentifier}]${titleLine}\nstate: ${event.fromState} → ${event.toState}`
     );
   }
 
