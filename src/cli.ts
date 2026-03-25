@@ -418,6 +418,16 @@ async function main(): Promise<void> {
   }
 }
 
+process.on('unhandledRejection', (reason) => {
+  const message = reason instanceof Error ? reason.message : String(reason);
+  const stack = reason instanceof Error ? reason.stack : undefined;
+  log.error('Unhandled promise rejection', { error: message, stack });
+});
+
+process.on('uncaughtException', (err) => {
+  log.error('Uncaught exception', { error: err.message, stack: err.stack });
+});
+
 main().catch((err) => {
   log.error('Fatal error', { error: err.message });
   process.exit(1);

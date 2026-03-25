@@ -32,6 +32,13 @@ export class ServerManager {
   private externalServer = false;
   private safeExecute: boolean;
   private workspaceRoots: string[];
+  private stopped = false;
+  private restartAttempts = 0;
+  private restartTimer: ReturnType<typeof setTimeout> | null = null;
+
+  private static readonly MAX_RESTART_ATTEMPTS = 10;
+  private static readonly RESTART_BASE_DELAY_MS = 1000;
+  private static readonly RESTART_MAX_DELAY_MS = 60000;
 
   constructor(options: ServerManagerOptions) {
     this.port = options.port;
@@ -149,6 +156,9 @@ export class ServerManager {
           resolved = true;
           clearTimeout(timeoutId);
           reject(new Error(`opencode server exited during startup with code ${code}`));
+        } else {
+          // Server exited after successful startup — schedule auto-restart
+          this.scheduleRestart();
         }
       });
     });
@@ -229,12 +239,60 @@ export class ServerManager {
           resolved = true;
           clearTimeout(timeoutId);
           reject(new Error(`opencode Docker container exited during startup with code ${code}`));
+        } else {
+          this.scheduleRestart();
         }
       });
     });
   }
 
+  private scheduleRestart(): void {
+    if (this.stopped || this.externalServer) return;
+
+    if (this.restartAttempts >= ServerManager.MAX_RESTART_ATTEMPTS) {
+      log.error('opencode server restart attempts exhausted', {
+        attempts: this.restartAttempts,
+        maxAttempts: ServerManager.MAX_RESTART_ATTEMPTS,
+      });
+      return;
+    }
+
+    const delay = Math.min(
+      ServerManager.RESTART_BASE_DELAY_MS * Math.pow(2, this.restartAttempts),
+      ServerManager.RESTART_MAX_DELAY_MS,
+    );
+
+    this.restartAttempts++;
+
+    log.warn('opencode server died unexpectedly, restarting', {
+      attempt: this.restartAttempts,
+      delayMs: delay,
+    });
+
+    this.restartTimer = setTimeout(async () => {
+      this.restartTimer = null;
+      try {
+        await this.start();
+        log.info('opencode server restarted successfully', { attempt: this.restartAttempts });
+        this.restartAttempts = 0;
+      } catch (err) {
+        log.error('opencode server restart failed', {
+          attempt: this.restartAttempts,
+          error: (err as Error).message,
+        });
+        this.scheduleRestart();
+      }
+    }, delay);
+  }
+
   stop(): void {
+    this.stopped = true;
+
+    if (this.restartTimer) {
+      clearTimeout(this.restartTimer);
+      this.restartTimer = null;
+    }
+
     if (this.externalServer) {
       log.info('Not stopping external opencode server');
       this.ready = false;

@@ -94,17 +94,13 @@ cmd_start() {
 
   if [[ "$dev_mode" == true ]]; then
     log "Starting Symphony in development mode..."
-    nohup npx tsx src/cli.ts \
-      --port "$SYMPHONY_PORT" \
-      >> "$SYMPHONY_LOG" 2>&1 &
+    nohup bash -c 'cd "'"$ROOT_DIR"'" && while true; do npx tsx src/cli.ts --port '"$SYMPHONY_PORT"' >> "'"$SYMPHONY_LOG"'" 2>&1; code=$?; if [ "$code" -eq 0 ]; then break; fi; echo "[$(date "+%Y-%m-%d %H:%M:%S")] Symphony exited with code $code, restarting in 3s..." >> "'"$SYMPHONY_LOG"'"; sleep 3; done' &
   else
     if [[ ! -f "$ROOT_DIR/dist/cli.js" ]]; then
       build_prod
     fi
     log "Starting Symphony in production mode..."
-    nohup node dist/cli.js \
-      --port "$SYMPHONY_PORT" \
-      >> "$SYMPHONY_LOG" 2>&1 &
+    nohup bash -c 'cd "'"$ROOT_DIR"'" && while true; do node dist/cli.js --port '"$SYMPHONY_PORT"' >> "'"$SYMPHONY_LOG"'" 2>&1; code=$?; if [ "$code" -eq 0 ]; then break; fi; echo "[$(date "+%Y-%m-%d %H:%M:%S")] Symphony exited with code $code, restarting in 3s..." >> "'"$SYMPHONY_LOG"'"; sleep 3; done' &
   fi
 
   local pid=$!
@@ -128,7 +124,9 @@ cmd_stop() {
   fi
 
   log "Stopping Symphony (PID $pid)..."
-  kill -TERM "$pid"
+
+  # Kill the entire process group (supervisor shell + node child)
+  kill -TERM -- -"$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null || true
 
   # Wait for graceful shutdown (up to 15 seconds)
   local elapsed=0
@@ -139,7 +137,7 @@ cmd_stop() {
 
   if kill -0 "$pid" 2>/dev/null; then
     log "Graceful shutdown timed out, sending SIGKILL..."
-    kill -KILL "$pid" 2>/dev/null || true
+    kill -KILL -- -"$pid" 2>/dev/null || kill -KILL "$pid" 2>/dev/null || true
   fi
 
   rm -f "$SYMPHONY_PID"
