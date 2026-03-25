@@ -1193,7 +1193,26 @@ export class Orchestrator {
         error: result.error,
       });
 
-      const wasAbortedExternally = result.error === 'Aborted' && !entry;
+      // 'Aborted' is set by the agent runner whenever the AbortSignal fires.  This
+      // always happens due to orchestrator-internal control flow (shutdown, stall
+      // detection, handover grace-period expiry) — never because the agent itself
+      // encountered an error.  Surfacing it as an "agent failed" notification is
+      // misleading, so we skip the connector event and go straight to the retry /
+      // cleanup logic.
+      const isAborted = result.error === 'Aborted';
+
+      // For the stall-timeout path the entry is removed from state.running before
+      // handleRunComplete is called, so entry is null.  In all other abort paths
+      // (shutdown, handover grace-period) the entry is still present.  Either way
+      // we treat the run as aborted internally and skip the retry.
+      if (isAborted) {
+        log.info('Run was aborted internally, skipping retry and connector notification', {
+          issueId: issue.id,
+          identifier: issue.identifier,
+        });
+        this.state.claimed.delete(issue.id);
+        return;
+      }
 
       this.emitConnectorEvent({
         type: 'agent_failed',
@@ -1202,17 +1221,8 @@ export class Orchestrator {
         issueIdentifier: issue.identifier,
         error: result.error ?? 'Unknown error',
         attempt,
-        willRetry: !wasAbortedExternally && (attempt ?? 0) + 1 <= this.config.maxRetries,
+        willRetry: (attempt ?? 0) + 1 <= this.config.maxRetries,
       } as AgentFailedEvent);
-
-      if (wasAbortedExternally) {
-        log.info('Run was aborted externally, skipping retry', {
-          issueId: issue.id,
-          identifier: issue.identifier,
-        });
-        this.state.claimed.delete(issue.id);
-        return;
-      }
 
       this.scheduleRetry(issue.id, issue.identifier, (attempt ?? 0) + 1, result.error ?? 'Unknown error');
     }
