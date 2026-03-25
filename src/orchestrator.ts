@@ -7,7 +7,7 @@ import { WorkflowStore } from './workflow-store.js';
 import { Logger } from './logger.js';
 import { PlatformConfig } from './platform/index.js';
 import { ConnectorManager } from './connector-manager.js';
-import { ConnectorEvent, AgentStartedEvent, AgentCompletedEvent, AgentFailedEvent, AgentLogEvent, InputRequestedEvent, IssueStateChangedEvent } from './connector.js';
+import { ConnectorEvent, AgentStartedEvent, AgentCompletedEvent, AgentFailedEvent, AgentLogEvent, InputRequestedEvent, IssueStateChangedEvent, CommentAddedEvent } from './connector.js';
 
 const log = new Logger('orchestrator');
 
@@ -70,6 +70,22 @@ export class Orchestrator {
 
   private emitConnectorEvent(event: ConnectorEvent): void {
     this.connectorManager?.emit(event);
+  }
+
+  private emitCommentAdded(issueId: string, issueIdentifier: string, author: 'human' | 'agent', content: string, commentId: string): void {
+    this.emitConnectorEvent({
+      type: 'comment_added',
+      timestamp: new Date(),
+      issueId,
+      issueIdentifier,
+      author,
+      content,
+      commentId,
+    } as CommentAddedEvent);
+  }
+
+  notifyCommentAdded(issueId: string, issueIdentifier: string, author: 'human' | 'agent', content: string, commentId: string): void {
+    this.emitCommentAdded(issueId, issueIdentifier, author, content, commentId);
   }
 
   submitInput(issueId: string, input: string): boolean {
@@ -849,7 +865,9 @@ export class Orchestrator {
         this.pendingInputResolvers.set(issue.id, resolve);
         
         if (request.prompt) {
-          this.issueTracker.addComment(issue.id, 'agent', request.prompt).catch(err => {
+          this.issueTracker.addComment(issue.id, 'agent', request.prompt).then(comment => {
+            this.emitCommentAdded(issue.id, issue.identifier, 'agent', request.prompt!, comment.id);
+          }).catch(err => {
             log.warn('Failed to add agent comment', { error: (err as Error).message });
           });
         }
@@ -1291,7 +1309,8 @@ export class Orchestrator {
       } as IssueStateChangedEvent);
       
       try {
-        await this.issueTracker.addComment(issueId, 'agent', `⚠️ Agent run failed and moved to ${failureState}.\n\nReason: ${reason}`);
+        const failureComment = await this.issueTracker.addComment(issueId, 'agent', `⚠️ Agent run failed and moved to ${failureState}.\n\nReason: ${reason}`);
+        this.emitCommentAdded(issueId, identifier, 'agent', failureComment.content, failureComment.id);
       } catch (commentErr) {
         log.warn('Failed to add failure comment', { issueId, error: (commentErr as Error).message });
       }

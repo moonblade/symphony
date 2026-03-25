@@ -347,7 +347,13 @@ export class WebServer {
         const content = req.body.content;
         
         const comment = await this.issueTracker.addComment(issueId, author, content);
-        
+
+        const issueMap = await this.issueTracker.fetchIssuesByIds([issueId]);
+        const issue = issueMap.get(issueId);
+        if (issue) {
+          this.orchestrator.notifyCommentAdded(issueId, issue.identifier, author, content, comment.id);
+        }
+
         this.broadcastIssuesUpdated();
         this.broadcast({ type: 'comments_updated', data: { issueId } });
         
@@ -602,7 +608,9 @@ export class WebServer {
           });
         }
 
-        await this.issueTracker.addComment(issueId, 'agent', `**Handover Notes:**\n${notes}`);
+        const handoverComment = await this.issueTracker.addComment(issueId, 'agent', `**Handover Notes:**\n${notes}`);
+        const handoverIssue = issue ?? currentIssue;
+        this.orchestrator.notifyCommentAdded(issueId, handoverIssue.identifier, 'agent', handoverComment.content, handoverComment.id);
 
         const sessionTerminated = await this.orchestrator.terminateSession(issueId, 30000, true);
 
