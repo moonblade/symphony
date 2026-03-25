@@ -954,6 +954,8 @@ export class Orchestrator {
           } : undefined,
           rawPayload: { turnCount: result.turnCount },
         });
+      } else if (result.error === 'Aborted') {
+        emitAgentLog('log', 'Agent run aborted (intentional handover or shutdown)', 'info', { rawPayload: { reason: 'Aborted' } });
       } else {
         emitAgentLog('log', `Agent run failed: ${result.error}`, 'error', { errorMessage: result.error });
       }
@@ -1205,12 +1207,6 @@ export class Orchestrator {
         this.scheduleContinuationRetry(issue.id, issue.identifier);
       }
     } else {
-      log.warn('Run failed', {
-        issueId: issue.id,
-        identifier: issue.identifier,
-        error: result.error,
-      });
-
       // 'Aborted' is set by the agent runner whenever the AbortSignal fires.  This
       // always happens due to orchestrator-internal control flow (shutdown, stall
       // detection, handover grace-period expiry) — never because the agent itself
@@ -1224,13 +1220,19 @@ export class Orchestrator {
       // (shutdown, handover grace-period) the entry is still present.  Either way
       // we treat the run as aborted internally and skip the retry.
       if (isAborted) {
-        log.info('Run was aborted internally, skipping retry and connector notification', {
+        log.info('Run aborted (intentional handover or shutdown), skipping retry and connector notification', {
           issueId: issue.id,
           identifier: issue.identifier,
         });
         this.state.claimed.delete(issue.id);
         return;
       }
+
+      log.warn('Run failed', {
+        issueId: issue.id,
+        identifier: issue.identifier,
+        error: result.error,
+      });
 
       this.emitConnectorEvent({
         type: 'agent_failed',
