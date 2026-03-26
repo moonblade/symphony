@@ -110,7 +110,7 @@ Review the diff against these criteria:
    ```
 
 2. If conflicts exist:
-   - Attempt to resolve them automatically if they are simple (e.g., package-lock.json, minor formatting)
+   - Attempt to resolve them automatically if they are simple (e.g., minor formatting)
    - For complex conflicts, escalate to Review
    - After resolving, commit with message: `{{ issue.identifier }}: Resolve merge conflicts`
    - Push the resolution to the source branch
