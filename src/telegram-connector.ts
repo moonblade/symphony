@@ -277,7 +277,7 @@ export class TelegramConnector implements Connector {
   private handleCommentAdded(event: CommentAddedEvent): void {
     if (event.author !== 'agent') return;
     if (!this.shouldNotifyComment(event.issueId, this.config?.commentNotificationLevel ?? 'all')) return;
-    this.broadcastToAllChats(`[${event.issueIdentifier}] comment:\n${event.content.slice(0, 500)}`);
+    this.broadcastToAllChats(`[${event.issueIdentifier}] comment:\n${event.content}`);
   }
 
   private shouldNotifyCard(issueId: string, level: TelegramNotificationLevel): boolean {
@@ -342,10 +342,27 @@ export class TelegramConnector implements Connector {
 
   private async safeSend(chatId: number, text: string): Promise<void> {
     if (!this.bot) return;
-    try {
-      await this.bot.sendMessage(chatId, text);
-    } catch (err) {
-      log.warn('Failed to send Telegram message', { chatId, error: (err as Error).message });
+    // Telegram enforces a 4096-character limit per message; split if needed.
+    const MAX_LENGTH = 4096;
+    const chunks: string[] = [];
+    let remaining = text;
+    while (remaining.length > MAX_LENGTH) {
+      // Prefer splitting on a newline boundary within the allowed window.
+      const window = remaining.slice(0, MAX_LENGTH);
+      const lastNewline = window.lastIndexOf('\n');
+      const splitAt = lastNewline > 0 ? lastNewline + 1 : MAX_LENGTH;
+      chunks.push(remaining.slice(0, splitAt));
+      remaining = remaining.slice(splitAt);
+    }
+    if (remaining.length > 0) {
+      chunks.push(remaining);
+    }
+    for (const chunk of chunks) {
+      try {
+        await this.bot.sendMessage(chatId, chunk);
+      } catch (err) {
+        log.warn('Failed to send Telegram message', { chatId, error: (err as Error).message });
+      }
     }
   }
 
