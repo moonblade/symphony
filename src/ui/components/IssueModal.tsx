@@ -224,6 +224,59 @@ export function IssueModal({ issue, onClose, onSave }: IssueModalProps) {
     }
   };
 
+  const handleMoveToTodo = async () => {
+    if (!issue) return;
+    try {
+      await api.updateIssue(issue.id, { state: 'Todo' });
+      setState('Todo');
+      onSave();
+    } catch (err) {
+      console.error('Failed to move issue to Todo', err);
+      alert('Failed to move issue to Todo');
+    }
+  };
+
+  const findRootWorkflowId = (currentWorkflowId: string): string => {
+    const pointedToBy = new Map<string, string>();
+    for (const wf of workflows) {
+      if (wf.nextWorkflowId) {
+        pointedToBy.set(wf.nextWorkflowId, wf.id);
+      }
+    }
+    let rootId = currentWorkflowId;
+    const visited = new Set<string>();
+    while (pointedToBy.has(rootId) && !visited.has(rootId)) {
+      visited.add(rootId);
+      rootId = pointedToBy.get(rootId)!;
+    }
+    return rootId;
+  };
+
+  const handleResetWorkflow = async () => {
+    if (!issue || !issue.workflowId) return;
+    const rootWorkflowId = findRootWorkflowId(issue.workflowId);
+    if (rootWorkflowId === issue.workflowId) {
+      try {
+        await api.updateIssue(issue.id, { state: 'Todo' });
+        setState('Todo');
+        onSave();
+      } catch (err) {
+        console.error('Failed to reset workflow', err);
+        alert('Failed to reset workflow');
+      }
+      return;
+    }
+    try {
+      await api.updateIssue(issue.id, { workflowId: rootWorkflowId, state: 'Todo' });
+      setWorkflowId(rootWorkflowId);
+      setState('Todo');
+      onSave();
+    } catch (err) {
+      console.error('Failed to reset workflow', err);
+      alert('Failed to reset workflow');
+    }
+  };
+
   const handleExportSessions = async () => {
     if (!issue) return;
     setIsExporting(true);
@@ -435,9 +488,31 @@ export function IssueModal({ issue, onClose, onSave }: IssueModalProps) {
                           }}
                         />
                         <div className="flex items-center justify-between mt-2">
-                          <p className="text-xs text-gray-400 dark:text-[#808080]">
-                            {navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}+Enter to send
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs text-gray-400 dark:text-[#808080]">
+                              {navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}+Enter to send
+                            </p>
+                            {isExistingIssue && state !== 'Todo' && (
+                              <button
+                                type="button"
+                                onClick={handleMoveToTodo}
+                                className="px-2.5 py-1 text-xs font-medium rounded-md border border-gray-300 dark:border-[#3d3d3d] text-gray-600 dark:text-[#a0a0a0] hover:bg-gray-100 dark:hover:bg-[#3d3d3d] transition-colors"
+                                title="Move card to Todo"
+                              >
+                                → Todo
+                              </button>
+                            )}
+                            {isExistingIssue && issue?.workflowId && (
+                              <button
+                                type="button"
+                                onClick={handleResetWorkflow}
+                                className="px-2.5 py-1 text-xs font-medium rounded-md border border-gray-300 dark:border-[#3d3d3d] text-gray-600 dark:text-[#a0a0a0] hover:bg-gray-100 dark:hover:bg-[#3d3d3d] transition-colors"
+                                title="Reset to first workflow in chain and move to Todo"
+                              >
+                                ↺ Reset Workflow
+                              </button>
+                            )}
+                          </div>
                           <button
                             onClick={handleAddComment}
                             disabled={!newComment.trim()}
