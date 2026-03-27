@@ -132,6 +132,17 @@ export interface TelegramSettings {
   commentNotificationLevel?: TelegramNotificationLevel;
 }
 
+export type TeamsNotificationLevel = 'all' | 'teams_only';
+
+export interface TeamsSettings {
+  enabled?: boolean;
+  appId?: string | null;
+  appPassword?: string | null;
+  allowlist?: string | null;
+  cardNotificationLevel?: TeamsNotificationLevel;
+  commentNotificationLevel?: TeamsNotificationLevel;
+}
+
 export interface LocalSettings {
   privateWorkflowsDir?: string | null;
   privateWorkflowsEnabled?: boolean;
@@ -140,6 +151,7 @@ export interface LocalSettings {
   safeExecute?: boolean;
   workflowsRootDir?: string | null;
   telegram?: TelegramSettings | null;
+  teams?: TeamsSettings | null;
 }
 
 export type KanbanColumnState = 'Backlog' | 'Todo' | 'In Progress' | 'Review' | 'Done';

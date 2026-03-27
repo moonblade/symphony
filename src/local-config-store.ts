@@ -14,6 +14,17 @@ export interface TelegramConfig {
   commentNotificationLevel?: TelegramNotificationLevel;
 }
 
+export type TeamsNotificationLevel = 'all' | 'teams_only';
+
+export interface TeamsConfig {
+  enabled?: boolean;
+  appId?: string | null;
+  appPassword?: string | null;
+  allowlist?: string | null;
+  cardNotificationLevel?: TeamsNotificationLevel;
+  commentNotificationLevel?: TeamsNotificationLevel;
+}
+
 export interface LocalConfig {
   privateWorkflowsDir?: string | null;
   privateWorkflowsEnabled?: boolean;
@@ -22,6 +33,7 @@ export interface LocalConfig {
   safeExecute?: boolean;
   workflowsRootDir?: string | null;
   telegram?: TelegramConfig | null;
+  teams?: TeamsConfig | null;
 }
 
 const DEFAULT_CONFIG: LocalConfig = {
@@ -92,6 +104,7 @@ export class LocalConfigStore {
       safeExecute: updated.safeExecute,
       workflowsRootDir: updated.workflowsRootDir,
       telegramEnabled: updated.telegram?.enabled,
+      teamsEnabled: updated.teams?.enabled,
     });
     
     return updated;

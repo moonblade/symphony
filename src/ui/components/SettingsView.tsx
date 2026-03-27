@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'preact/hooks';
-import type { LocalSettings, TelegramNotificationLevel } from '../types.js';
+import type { LocalSettings, TelegramNotificationLevel, TeamsNotificationLevel } from '../types.js';
 import { api } from '../api.js';
 
 export function SettingsView() {
@@ -13,6 +13,11 @@ export function SettingsView() {
   const [tgAllowlist, setTgAllowlist] = useState('');
   const [tgCardLevel, setTgCardLevel] = useState<TelegramNotificationLevel>('all');
   const [tgCommentLevel, setTgCommentLevel] = useState<TelegramNotificationLevel>('all');
+  const [teamsAppId, setTeamsAppId] = useState('');
+  const [teamsAppPassword, setTeamsAppPassword] = useState('');
+  const [teamsAllowlist, setTeamsAllowlist] = useState('');
+  const [teamsCardLevel, setTeamsCardLevel] = useState<TeamsNotificationLevel>('all');
+  const [teamsCommentLevel, setTeamsCommentLevel] = useState<TeamsNotificationLevel>('all');
 
   const loadSettings = useCallback(async () => {
     try {
@@ -25,6 +30,11 @@ export function SettingsView() {
       setTgAllowlist(data.telegram?.allowlist || '');
       setTgCardLevel(data.telegram?.cardNotificationLevel ?? 'all');
       setTgCommentLevel(data.telegram?.commentNotificationLevel ?? 'all');
+      setTeamsAppId(data.teams?.appId || '');
+      setTeamsAppPassword(data.teams?.appPassword || '');
+      setTeamsAllowlist(data.teams?.allowlist || '');
+      setTeamsCardLevel(data.teams?.cardNotificationLevel ?? 'all');
+      setTeamsCommentLevel(data.teams?.commentNotificationLevel ?? 'all');
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -118,6 +128,59 @@ export function SettingsView() {
       setSettings(updated);
       setSuccess(enabled ? 'Private workflows enabled.' : 'Private workflows disabled.');
       setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveTeams = async () => {
+    try {
+      setSaving(true);
+      setError(null);
+      setSuccess(null);
+      const updated = await api.updateSettings({
+        ...settings,
+        teams: {
+          enabled: settings.teams?.enabled ?? false,
+          appId: teamsAppId.trim() || null,
+          appPassword: teamsAppPassword.trim() || null,
+          allowlist: teamsAllowlist.trim() || null,
+          cardNotificationLevel: teamsCardLevel,
+          commentNotificationLevel: teamsCommentLevel,
+        },
+      });
+      setSettings(updated);
+      setSuccess('Teams settings saved. Restart Symphony to apply.');
+      setTimeout(() => setSuccess(null), 5000);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleTeams = async (enabled: boolean) => {
+    try {
+      setSaving(true);
+      setError(null);
+      setSuccess(null);
+      const updated = await api.updateSettings({
+        ...settings,
+        teams: {
+          ...settings.teams,
+          enabled,
+          appId: teamsAppId.trim() || null,
+          appPassword: teamsAppPassword.trim() || null,
+          allowlist: teamsAllowlist.trim() || null,
+          cardNotificationLevel: teamsCardLevel,
+          commentNotificationLevel: teamsCommentLevel,
+        },
+      });
+      setSettings(updated);
+      setSuccess(enabled ? 'Teams enabled. Restart Symphony to apply.' : 'Teams disabled. Restart Symphony to apply.');
+      setTimeout(() => setSuccess(null), 4000);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -416,6 +479,157 @@ export function SettingsView() {
                   }`}
                 >
                   {saving ? 'Saving...' : 'Save Telegram Settings'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-md p-4" style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-primary)' }}>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h4 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Microsoft Teams</h4>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                  Receive cards from Teams messages and send status updates back.
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={settings.teams?.enabled ?? false}
+                onClick={() => handleToggleTeams(!(settings.teams?.enabled ?? false))}
+                disabled={saving}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                  settings.teams?.enabled ? 'bg-blue-600' : ''
+                } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                style={!settings.teams?.enabled ? { background: 'var(--bg-secondary)' } : undefined}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    settings.teams?.enabled ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="teamsAppId" className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
+                  App ID
+                </label>
+                <input
+                  type="text"
+                  id="teamsAppId"
+                  value={teamsAppId}
+                  onChange={(e) => setTeamsAppId((e.target as HTMLInputElement).value)}
+                  placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                  disabled={saving}
+                  className="w-full px-3 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed"
+                  style={{
+                    background: 'var(--bg-input)',
+                    border: '1px solid var(--border-primary)',
+                    color: 'var(--text-primary)',
+                  }}
+                />
+                <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                  Microsoft App ID from the Azure Bot registration. Stored locally in <code className="px-1 rounded" style={{ background: 'var(--bg-secondary)' }}>local-config.json</code>.
+                </p>
+              </div>
+
+              <div>
+                <label htmlFor="teamsAppPassword" className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
+                  App Password
+                </label>
+                <input
+                  type="password"
+                  id="teamsAppPassword"
+                  value={teamsAppPassword}
+                  onChange={(e) => setTeamsAppPassword((e.target as HTMLInputElement).value)}
+                  placeholder="Client secret from Azure Bot registration"
+                  disabled={saving}
+                  className="w-full px-3 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed"
+                  style={{
+                    background: 'var(--bg-input)',
+                    border: '1px solid var(--border-primary)',
+                    color: 'var(--text-primary)',
+                  }}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="teamsAllowlist" className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
+                  Allowlist
+                </label>
+                <input
+                  type="text"
+                  id="teamsAllowlist"
+                  value={teamsAllowlist}
+                  onChange={(e) => setTeamsAllowlist((e.target as HTMLInputElement).value)}
+                  placeholder="aad-object-id-1, aad-object-id-2"
+                  disabled={saving}
+                  className="w-full px-3 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed"
+                  style={{
+                    background: 'var(--bg-input)',
+                    border: '1px solid var(--border-primary)',
+                    color: 'var(--text-primary)',
+                  }}
+                />
+                <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                  Comma-separated Azure AD object IDs of allowed users. Leave empty to allow all.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="teamsCardLevel" className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
+                    Card Notifications
+                  </label>
+                  <select
+                    id="teamsCardLevel"
+                    value={teamsCardLevel}
+                    onChange={(e) => setTeamsCardLevel((e.target as HTMLSelectElement).value as TeamsNotificationLevel)}
+                    disabled={saving}
+                    className="w-full px-3 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed"
+                    style={{
+                      background: 'var(--bg-input)',
+                      border: '1px solid var(--border-primary)',
+                      color: 'var(--text-primary)',
+                    }}
+                  >
+                    <option value="all">All cards</option>
+                    <option value="teams_only">Teams-initiated only</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="teamsCommentLevel" className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
+                    Comment Notifications
+                  </label>
+                  <select
+                    id="teamsCommentLevel"
+                    value={teamsCommentLevel}
+                    onChange={(e) => setTeamsCommentLevel((e.target as HTMLSelectElement).value as TeamsNotificationLevel)}
+                    disabled={saving}
+                    className="w-full px-3 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed"
+                    style={{
+                      background: 'var(--bg-input)',
+                      border: '1px solid var(--border-primary)',
+                      color: 'var(--text-primary)',
+                    }}
+                  >
+                    <option value="all">All cards</option>
+                    <option value="teams_only">Teams-initiated only</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="pt-2" style={{ borderTop: '1px solid var(--border-primary)' }}>
+                <button
+                  onClick={handleSaveTeams}
+                  disabled={saving}
+                  className={`px-4 py-2 bg-blue-600 text-white rounded-md font-medium transition-colors ${
+                    saving ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'
+                  }`}
+                >
+                  {saving ? 'Saving...' : 'Save Teams Settings'}
                 </button>
               </div>
             </div>
