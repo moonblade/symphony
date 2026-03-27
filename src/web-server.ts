@@ -806,7 +806,7 @@ export class WebServer {
 
     this.app.put('/api/settings', async (req, res) => {
       try {
-        const { privateWorkflowsDir, privateWorkflowsEnabled, workflowBadgeMode, theme, safeExecute, telegram } = req.body;
+        const { privateWorkflowsDir, privateWorkflowsEnabled, workflowBadgeMode, theme, safeExecute, telegram, teams } = req.body;
         
         const updates: {
           privateWorkflowsDir?: string | null;
@@ -815,6 +815,7 @@ export class WebServer {
           theme?: 'system' | 'light' | 'dark';
           safeExecute?: boolean;
           telegram?: import('./local-config-store.js').TelegramConfig | null;
+          teams?: import('./local-config-store.js').TeamsConfig | null;
         } = {};
         
         if (privateWorkflowsDir !== undefined) {
@@ -834,6 +835,9 @@ export class WebServer {
         }
         if (telegram !== undefined) {
           updates.telegram = telegram;
+        }
+        if (teams !== undefined) {
+          updates.teams = teams;
         }
         
         const config = await this.localConfigStore.updateConfig(updates);
@@ -1143,6 +1147,10 @@ export class WebServer {
       createdAt: workflow.createdAt.toISOString(),
       updatedAt: workflow.updatedAt.toISOString(),
     };
+  }
+
+  registerPostRoute(path: string, handler: (req: express.Request, res: express.Response) => void): void {
+    this.app.post(path, handler);
   }
 
   async start(): Promise<void> {

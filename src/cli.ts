@@ -21,6 +21,7 @@ import { initLogBuffer } from './log-buffer.js';
 import { ConnectorManager } from './connector-manager.js';
 import { KanbanConnector } from './kanban-connector.js';
 import { TelegramConnector } from './telegram-connector.js';
+import { TeamsConnector } from './teams-connector.js';
 import { ChatManager } from './chat-manager.js';
 
 const log = new Logger('cli');
@@ -358,8 +359,10 @@ async function main(): Promise<void> {
 
   await orchestrator.start();
 
+  let kanbanConnector: KanbanConnector | null = null;
+
   if (!args.noWeb) {
-    const kanbanConnector = new KanbanConnector({
+    kanbanConnector = new KanbanConnector({
       port: args.webPort,
       orchestrator,
       config,
@@ -377,6 +380,17 @@ async function main(): Promise<void> {
 
   const telegramConnector = new TelegramConnector({ localConfigStore, chatManager });
   connectorManager.register(telegramConnector);
+
+  const teamsConnector = new TeamsConnector({
+    localConfigStore,
+    chatManager,
+    registerRoute: (handler) => {
+      if (kanbanConnector) {
+        kanbanConnector.getWebServer().registerPostRoute('/api/teams/messages', handler);
+      }
+    },
+  });
+  connectorManager.register(teamsConnector);
 
   await connectorManager.startAll();
 
