@@ -45,6 +45,26 @@ export class TelegramConnector implements Connector {
 
     try {
       this.bot = new TelegramBot(tgConfig.botToken, { polling: true });
+
+      for (const id of tgConfig.knownChatIds ?? []) {
+        this.knownChatIds.add(id);
+      }
+
+      try {
+        const issues = await context.getIssues();
+        for (const issue of issues) {
+          if (issue.labels?.includes('telegram-initiated')) {
+            this.telegramInitiatedIssues.add(issue.id);
+          }
+        }
+        log.debug('Seeded telegram state', {
+          chatIds: this.knownChatIds.size,
+          initiatedIssues: this.telegramInitiatedIssues.size,
+        });
+      } catch (err) {
+        log.warn('Failed to seed telegram-initiated issues', { error: (err as Error).message });
+      }
+
       this.setupHandlers();
       log.info('Telegram connector started (polling mode)');
     } catch (err) {
@@ -108,7 +128,12 @@ export class TelegramConnector implements Connector {
       const text = msg.text?.trim() ?? '';
       const chatId = msg.chat.id;
 
-      this.knownChatIds.add(chatId);
+      if (!this.knownChatIds.has(chatId)) {
+        this.knownChatIds.add(chatId);
+        this.persistChatId(chatId).catch((err) => {
+          log.warn('Failed to persist chat ID', { chatId, error: (err as Error).message });
+        });
+      }
 
       if (!text) return;
 
@@ -198,6 +223,7 @@ export class TelegramConnector implements Connector {
         title: title.slice(0, 200),
         description: title.length > 200 ? title : undefined,
         state: 'Todo',
+        labels: ['telegram-initiated'],
       });
       this.telegramInitiatedIssues.add(issue.id);
       await this.safeSend(chatId, `Card created: [${issue.identifier}] ${issue.title}`);
@@ -338,6 +364,16 @@ export class TelegramConnector implements Connector {
         .map(s => s.trim())
         .filter(s => s.length > 0)
     );
+  }
+
+  private async persistChatId(chatId: number): Promise<void> {
+    const localConfig = await this.localConfigStore.getConfig();
+    const existing = localConfig.telegram?.knownChatIds ?? [];
+    if (!existing.includes(chatId)) {
+      await this.localConfigStore.updateConfig({
+        telegram: { ...localConfig.telegram, knownChatIds: [...existing, chatId] },
+      });
+    }
   }
 
   private async safeSend(chatId: number, text: string): Promise<void> {
