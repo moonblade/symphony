@@ -38,7 +38,7 @@ export class ChatManager {
   private workflowStore: WorkflowStore;
   private workspacePath: string;
   private messageHistory: ChatMessage[] = [];
-  private isProcessing = false;
+  private pendingChain: Promise<unknown> = Promise.resolve();
   private liquid: Liquid;
   private modelConfig: ModelConfig | undefined;
 
@@ -113,12 +113,13 @@ export class ChatManager {
   }
 
   async sendMessage(message: string, onEvent?: ChatEventCallback): Promise<ChatResponse> {
-    if (this.isProcessing) {
-      throw new Error('Chat is currently processing a message');
-    }
+    const result = new Promise<ChatResponse>((resolve, reject) => {
+      this.pendingChain = this.pendingChain.then(() => this._doSendMessage(message, onEvent).then(resolve, reject));
+    });
+    return result;
+  }
 
-    this.isProcessing = true;
-
+  private async _doSendMessage(message: string, onEvent?: ChatEventCallback): Promise<ChatResponse> {
     try {
       await this.ensureSession();
 
@@ -334,8 +335,6 @@ export class ChatManager {
       this.client = null;
 
       throw err;
-    } finally {
-      this.isProcessing = false;
     }
   }
 
