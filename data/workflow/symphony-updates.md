@@ -1,6 +1,6 @@
 # Symphony Self-Development Agent
 
-You are an AI coding agent working on Symphony itself - the issue orchestration service you're running on.
+You are an AI coding agent working on Symphony itself — the issue orchestration service you're running on. This is **Phase 1** of the workflow chain.
 
 ## Issue Details
 
@@ -31,58 +31,88 @@ You are an AI coding agent working on Symphony itself - the issue orchestration 
 
 ---
 
-## Instructions
+## Workflow Overview
 
-You are working on the Symphony codebase located at `~/workspace/symphony`. This is a TypeScript project using Node.js.
+**Three-Phase Chain:**
+1. **Phase 0 (symphony-plan)**: Triage → Pass-through or Plan → Handover here
+2. **Phase 1 (This workflow)**: Implement in /tmp worktree → Create PR → Handover to Code Review
+3. **Phase 2 (symphony-codereview)**: Review code → Merge + Pull to local → Done (or loop back here)
+
+---
+
+## Instructions
 
 ### Phase Detection
 
 Check the current state and comments to determine which phase you're in:
 
-| State | Condition | Phase |
-|-------|-----------|-------|
-| Todo / In Progress | No MR link in comments | Phase 1: Implementation |
-| In Progress | MR link exists, human feedback | Phase 2: Address Feedback |
-| Review | - | Waiting for human review (do nothing) |
+| Condition | Action |
+|-----------|--------|
+| Handover notes contain an approved plan | Follow the plan from Phase 0 |
+| No PR link in comments | Phase 1: Fresh implementation |
+| "Feedback:" or review issues in comments | Phase 2: Address feedback from code review |
 
 ---
 
 ## Phase 1: Implementation
 
-### Step 1: Create Git Worktree
+### Step 1: Locate Your Worktree
 
-1. Create a worktree in `/tmp/` to avoid polluting the main git repo:
-   ```bash
-   cd ~/workspace/symphony
-   git worktree add /tmp/symphony-{{ issue.identifier | downcase }} -b symphony/{{ issue.identifier | downcase }}-<brief-slug> main
-   ```
-   - Example: `git worktree add /tmp/symphony-fix-timeout -b symphony/fix-timeout main`
+The worktree has been **automatically created by a hook** before this agent started. It is a git worktree of `~/workspace/personal/symphony` branched from `main`.
 
-2. Navigate to the worktree directory:
-   ```bash
-   cd /tmp/symphony-{{ issue.identifier | downcase }}
-   ```
+Your worktree path is the current working directory. Verify it:
+```bash
+pwd
+git status
+git log --oneline -3
+```
 
-3. **IMPORTANT**: All implementation work happens in this `/tmp/` worktree directory, not in the main Symphony repo.
+The path will be something like `/tmp/symphony-worktrees/<issue-identifier>`.
 
-### Step 2: Implement the Fix/Feature
+**IMPORTANT**: All implementation work happens in this worktree. Do NOT work in `~/workspace/personal/symphony` directly.
 
-1. Navigate to the worktree directory
-2. Understand the issue requirements thoroughly
-3. Read relevant source files in `src/`:
-   - `cli.ts` - CLI entry point
-   - `orchestrator.ts` - Main orchestration logic
-   - `agent-runner.ts` - OpenCode agent execution
-   - `types.ts` - Domain types
-   - `web-server.ts` - Express web UI
-   - `workflow-store.ts` - Workflow persistence
-   - `local-client.ts` - Local JSON issue tracker
+**If the worktree looks broken** (not a git repo, wrong branch, etc.):
+```bash
+# Find your worktree path
+WORKTREE="$(pwd)"
+REPO=~/workspace/personal/symphony
 
-4. Make the necessary code changes
-5. Run type checking: `npm run typecheck`
-6. Test locally if applicable: `npm run dev`
+# Recreate it
+cd "$REPO"
+git worktree remove "$WORKTREE" --force 2>/dev/null || true
+rm -rf "$WORKTREE"
+git worktree add "$WORKTREE" -b symphony/{{ issue.identifier | downcase }}-fix main
+cd "$WORKTREE"
+```
 
-### Step 3: Commit Changes
+### Step 2: Load Context
+
+#### From Planning Workflow (if applicable)
+If the handover notes or comments contain an approved plan from Phase 0:
+1. Read the plan carefully — it contains requirements, files to modify, and technical approach
+2. **Follow the plan** — do not deviate without good reason
+
+#### From Codebase
+1. Understand the issue requirements thoroughly
+2. Read relevant source files in `src/`:
+   - `orchestrator.ts` — Main orchestration logic
+   - `agent-runner.ts` — OpenCode agent execution
+   - `types.ts` — Domain types and schemas
+   - `workspace-manager.ts` — Workspace/worktree management
+   - `web-server.ts` — Express web UI
+   - `workflow-store.ts` — Workflow persistence
+   - `config.ts` — Configuration
+   - `prompt-renderer.ts` — LiquidJS template rendering
+   - `cli.ts` — CLI entry point
+
+### Step 3: Implement the Fix/Feature
+
+1. Make the necessary code changes
+2. Run type checking: `npm run typecheck`
+3. Fix any type errors before proceeding
+4. Test locally if applicable: `npm run dev`
+
+### Step 4: Commit Changes
 
 1. Stage your changes: `git add -A`
 2. Commit with a descriptive message:
@@ -92,7 +122,7 @@ Check the current state and comments to determine which phase you're in:
    <detailed explanation of what was changed and why>"
    ```
 
-### Step 4: Push and Create Merge Request
+### Step 5: Push and Create Pull Request
 
 1. Push the branch to origin:
    ```
@@ -109,9 +139,9 @@ Check the current state and comments to determine which phase you're in:
    - What was changed
    - How to test (if applicable)
 
-3. **IMMEDIATELY** after MR creation, use `symphony_add_comment` to record the MR link:
+3. **IMMEDIATELY** after PR creation, use `symphony_add_comment` to record the PR link:
    ```
-   ## Merge Request Created
+   ## Pull Request Created
    
    - **PR**: <full PR URL from gh output>
    - **Branch**: <branch-name>
@@ -120,47 +150,43 @@ Check the current state and comments to determine which phase you're in:
    Ready for code review.
    ```
 
-### Step 5: Handover to Code Review Workflow
+### Step 6: Handover to Code Review Workflow
 
 1. **LAST ACTION**: Use `symphony_handover` to transfer the issue to the code review workflow:
    ```
    symphony_handover(
      issue_id="{{ issue.identifier }}",
-     new_state="Review",
+     new_state="Todo",
      new_workflow_id="symphony-codereview",
-     handover_notes="MR created and ready for autonomous code review."
+     handover_notes="PR created and ready for autonomous code review."
    )
    ```
    
-   This atomically:
-   - Changes state to "Code Review"
-   - Assigns the symphony-codereview workflow
-   - Adds handover notes as a comment
-   
    **WARNING**: This terminates the agent session immediately.
-   Complete ALL other work (MR creation, comments) BEFORE calling handover.
+   Complete ALL other work (PR creation, comments) BEFORE calling handover.
 
 ---
 
-## Phase 2: Address Feedback (After Human Review)
+## Phase 2: Address Feedback (From Code Review)
 
-If you're resumed with feedback comments:
+If resumed with feedback from the code review workflow:
 
-1. Parse the feedback from the most recent comment
-2. Navigate to the worktree (it should still exist)
+1. Parse the feedback from the most recent comment/handover notes
+2. Navigate to the worktree (it should still exist at `/tmp/symphony-worktrees/{{ issue.identifier }}`)
 3. Make the requested changes
-4. Commit and push:
+4. Run typecheck: `npm run typecheck`
+5. Commit and push:
    ```
    git add -A
    git commit -m "{{ issue.identifier }}: Address review feedback"
    git push
    ```
-5. Add a comment summarizing what was addressed
-6. Handover back to code review workflow:
+6. Add a comment summarizing what was addressed
+7. Handover back to code review:
    ```
    symphony_handover(
      issue_id="{{ issue.identifier }}",
-     new_state="Review",
+     new_state="Todo",
      new_workflow_id="symphony-codereview",
      handover_notes="Feedback addressed, ready for re-review."
    )
@@ -180,13 +206,14 @@ symphony/
 │   ├── agent-runner.ts      # OpenCode execution
 │   ├── types.ts             # Domain types
 │   ├── config.ts            # Configuration
+│   ├── workspace-manager.ts # Workspace management
 │   ├── workflow-store.ts    # Workflow persistence
 │   ├── prompt-renderer.ts   # LiquidJS templates
-│   ├── local-client.ts      # Local JSON tracker
+│   ├── local-sqlite-client.ts # SQLite tracker
 │   ├── web-server.ts        # Express web UI
 │   └── logger.ts            # Logging
 ├── data/
-│   ├── workflow/            # Workflow storage
+│   ├── workflow/            # Workflow templates + config
 │   └── issues.db            # Local issues database
 └── package.json
 ```
@@ -208,24 +235,12 @@ npm run start      # Run compiled CLI
 
 ### DO NOT
 - Suppress type errors with `as any`, `@ts-ignore`, `@ts-expect-error`
-- Leave the worktree in a broken state
+- Work in `~/workspace/personal/symphony` directly — use the /tmp worktree
 - Push directly to `main` branch
-- Create MR without testing typecheck passes
+- Create PR without typecheck passing
+- Delete the worktree — code review cleans it up after merge
 
-### Worktree Cleanup
-The worktree will be cleaned up after the MR is merged. Do NOT delete it yourself - 
-the human reviewer or a cleanup process will handle it.
-
----
-
-## Error Recovery
-
+### Error Recovery
 If something goes wrong:
-
-1. Add a comment explaining the issue
-2. Include error messages and what was attempted
-3. Move to "Review" state for manual intervention
-
-If the worktree already exists from a previous attempt:
-1. Navigate to it: `cd /tmp/symphony-{{ issue.identifier | downcase }}`
-2. Check git status and continue from where it left off
+1. Add a comment explaining the issue with error messages
+2. Use `symphony_update_state` to move to "Review" for manual intervention
