@@ -1058,16 +1058,26 @@ export class WebServer {
     lines.push('---');
     lines.push('');
     
-    if (sessions.length > 0) {
-      lines.push('## Sessions');
-      lines.push('');
-      
-      const sortedSessions = [...sessions].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
-      for (const session of sortedSessions) {
+    lines.push('## Timeline');
+    lines.push('');
+
+    type TimelineEntry =
+      | { type: 'session'; timestamp: Date; data: IssueSession }
+      | { type: 'comment'; timestamp: Date; data: IssueComment };
+
+    const timeline: TimelineEntry[] = [
+      ...sessions.map(s => ({ type: 'session' as const, timestamp: s.createdAt, data: s })),
+      ...comments.map(c => ({ type: 'comment' as const, timestamp: c.createdAt, data: c })),
+    ];
+    timeline.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+
+    for (const entry of timeline) {
+      if (entry.type === 'session') {
+        const session = entry.data;
         const status = session.isActive ? '🟢 Active' : '⚪ Completed';
         const workflowLabel = session.workflowName || 'Default';
         const createdAt = session.createdAt.toISOString();
-        
+
         lines.push(`### Session: ${session.sessionId.slice(0, 12)}...`);
         lines.push('');
         lines.push(`- **Status:** ${status}`);
@@ -1077,7 +1087,7 @@ export class WebServer {
           lines.push(`- **Workspace:** \`${session.workspacePath}\``);
         }
         lines.push('');
-        
+
         const history = sessionHistories.get(session.sessionId);
         if (history && history.length > 0) {
           lines.push('#### Conversation');
@@ -1111,21 +1121,14 @@ export class WebServer {
             lines.push('');
           }
         }
-        
+
         lines.push('---');
         lines.push('');
-      }
-    }
-    
-    if (comments.length > 0) {
-      lines.push('## Activity / Comments');
-      lines.push('');
-      
-      const sortedComments = [...comments].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
-      for (const comment of sortedComments) {
+      } else {
+        const comment = entry.data;
         const authorLabel = comment.author === 'agent' ? '🤖 Agent' : '👤 Human';
         const createdAt = comment.createdAt.toISOString();
-        
+
         lines.push(`### ${authorLabel} - ${createdAt}`);
         lines.push('');
         lines.push(comment.content);
