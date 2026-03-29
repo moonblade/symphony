@@ -125,7 +125,11 @@ export function KanbanColumn({
           <Fragment key={issue.id}>
             <KanbanCard
               issue={issue}
-              runningAgent={runningAgents.find((a) => a.issueId === issue.id)}
+              runningAgent={
+                columnState === 'In Progress' || columnState === 'Todo'
+                  ? runningAgents.find((a) => a.issueId === issue.id)
+                  : undefined
+              }
               pendingInput={pendingInputRequests[issue.id]}
               workflowBadgeMode={workflowBadgeMode}
               workflowColorOverride={issue.workflowId ? workflowColorMap?.[issue.workflowId] : undefined}

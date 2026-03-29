@@ -521,6 +521,13 @@ export class Orchestrator {
 
     entry.handoverRequested = true;
 
+    const sessionId = entry.session?.sessionId;
+    if (sessionId) {
+      this.issueTracker.deactivateSession(sessionId).catch(err => {
+        log.warn('Failed to deactivate session during handover', { issueId: entry.issueId, error: (err as Error).message });
+      });
+    }
+
     const graceMs = 30000;
 
     if (entry.runner) {
@@ -809,9 +816,9 @@ export class Orchestrator {
           this.issueTracker.updateIssueWorkspacePath(issue.id, workspacePath).catch(err => {
             log.warn('Failed to persist workspace_path', { issueId: issue.id, error: (err as Error).message });
           });
-          // Create the session record immediately with worktreeRoot=null so the UI
-          // can show the session link right away, without waiting for the git worktree
-          // root lookup (which can take many seconds and was causing ~50s link delay).
+          this.issueTracker.deactivateAllIssueSessions(issue.id).catch(err => {
+            log.warn('Failed to deactivate prior sessions', { issueId: issue.id, error: (err as Error).message });
+          });
           this.workflowStore.getWorkflow(entry.workflowId).then(workflow => {
             const workflowName = workflow?.name ?? entry.workflowId;
             const sessionId = event.sessionId!;

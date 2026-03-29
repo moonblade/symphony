@@ -655,6 +655,14 @@ export class LocalSqliteClient implements IssueTrackerClient {
     }
   }
 
+  async deactivateAllIssueSessions(issueId: string): Promise<void> {
+    const db = this.getDb();
+    const result = db.prepare(`UPDATE issue_sessions SET is_active = 0 WHERE issue_id = ? AND is_active = 1`).run(issueId);
+    if (result.changes > 0) {
+      log.info('Deactivated all active sessions for issue', { issueId, count: result.changes });
+    }
+  }
+
   async getIssueSessions(issueId: string): Promise<IssueSession[]> {
     const db = this.getDb();
     const rows = db.prepare(`
