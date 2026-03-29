@@ -6,6 +6,7 @@ import { IssueTrackerClient } from './issue-tracker.js';
 import { WorkflowStore } from './workflow-store.js';
 import { LocalConfigStore } from './local-config-store.js';
 import { Logger } from './logger.js';
+import { ServerManager } from './server-manager.js';
 
 const log = new Logger('kanban-connector');
 
@@ -16,6 +17,7 @@ export interface KanbanConnectorOptions {
   workflowStore: WorkflowStore;
   localConfigStore: LocalConfigStore;
   issueTracker: IssueTrackerClient;
+  serverManager?: ServerManager;
 }
 
 export class KanbanConnector implements Connector {
@@ -37,6 +39,7 @@ export class KanbanConnector implements Connector {
       workflowStore: options.workflowStore,
       localConfigStore: options.localConfigStore,
       issueTracker: options.issueTracker,
+      serverManager: options.serverManager,
     });
   }
 

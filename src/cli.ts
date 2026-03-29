@@ -369,6 +369,7 @@ async function main(): Promise<void> {
       workflowStore,
       localConfigStore,
       issueTracker,
+      serverManager,
     });
     connectorManager.register(kanbanConnector);
   }
