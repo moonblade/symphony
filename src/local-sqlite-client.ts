@@ -429,6 +429,12 @@ export class LocalSqliteClient implements IssueTrackerClient {
 
     log.info('Updated issue', { issueId: row.id });
 
+    if (data.state !== undefined && this.isTerminalState(data.state)) {
+      await this.deactivateAllIssueSessions(row.id as string);
+      await this.updateIssueSessionId(row.id as string, null);
+      log.info('Deactivated sessions for issue moved to terminal state', { issueId: row.id, state: data.state });
+    }
+
     const updatedRow = db.prepare(`SELECT * FROM issues WHERE id = ?`).get(row.id) as Record<string, unknown>;
     return this.loadIssue(updatedRow);
   }
