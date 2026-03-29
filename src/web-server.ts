@@ -14,6 +14,7 @@ import { getLogs, setLogStreamCallback, clearLogStreamCallback } from './log-buf
 import { Logger } from './logger.js';
 import { AgentLogEntry, InputRequest, StoredWorkflow, Issue, IssueSession, IssueComment, IssueLog, OPENCODE_SERVER_PORT } from './types.js';
 import { ChatManager, ChatEvent } from './chat-manager.js';
+import { ServerManager } from './server-manager.js';
 
 const log = new Logger('web');
 
@@ -36,6 +37,7 @@ interface WebServerOptions {
   workflowStore: WorkflowStore;
   localConfigStore: LocalConfigStore;
   issueTracker: IssueTrackerClient;
+  serverManager?: ServerManager;
 }
 
 function serializeAgentLogEntry(entry: AgentLogEntry): {
@@ -64,6 +66,7 @@ export class WebServer {
   private workflowStore: WorkflowStore;
   private localConfigStore: LocalConfigStore;
   private issueTracker: IssueTrackerClient;
+  private serverManager: ServerManager | undefined;
   private chatManager: ChatManager;
   private sseClients: Set<Response> = new Set();
   private chatSseClients: Set<Response> = new Set();
@@ -78,6 +81,7 @@ export class WebServer {
     this.workflowStore = options.workflowStore;
     this.localConfigStore = options.localConfigStore;
     this.issueTracker = options.issueTracker;
+    this.serverManager = options.serverManager;
     this.app = express();
     this.chatManager = new ChatManager({
       workflowStore: this.workflowStore,
@@ -219,6 +223,7 @@ export class WebServer {
       const status = this.orchestrator.getStatus();
       const frontendStatus = {
         running: status.running,
+        opencodeServerReady: this.serverManager?.isRunning ?? true,
         runningAgents: status.runningIssues.map((issue) => ({
           issueId: issue.id,
           identifier: issue.identifier,
@@ -1244,8 +1249,17 @@ self.addEventListener('fetch', (event) => {
 
   if (url.pathname === '/api/events' || url.pathname === '/api/chat/stream') return;
 
+  // Health checks must always go directly to the network — never serve from cache
+  // so the UI can reliably detect whether the service is reachable.
+  if (url.pathname === '/api/health') {
+    event.respondWith(fetch(request));
+    return;
+  }
+
   if (url.pathname.startsWith('/api/')) {
-    event.respondWith(networkFirst(request, API_CACHE, 3000));
+    // 10 s timeout: generous enough for cold-start / slow DB queries while still
+    // providing an eventual offline fallback when the service is truly unreachable.
+    event.respondWith(networkFirst(request, API_CACHE, 10000));
     return;
   }
 
@@ -1291,7 +1305,7 @@ async function networkFirst(request, cacheName, timeoutMs) {
   } catch (_err) {
     const cached = await cache.match(request);
     if (cached) return cached;
-    return new Response(JSON.stringify({ error: 'Offline', cached: false }), {
+    return new Response(JSON.stringify({ error: 'Offline', cached: false, reason: _err instanceof Error ? _err.message : String(_err) }), {
       status: 503,
       headers: { 'Content-Type': 'application/json' },
     });
