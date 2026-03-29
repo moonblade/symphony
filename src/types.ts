@@ -254,6 +254,10 @@ export interface RunningEntry {
   handoverRequested?: boolean;
   handoverDeadline?: Date | null;
   handoverTimer?: ReturnType<typeof setTimeout> | null;
+  /** True when the session was started via runAgent; false/absent for resumeSession.
+   *  terminateSession uses this to skip the premature releaseClaim in the abort timer
+   *  when runAgent will call handleRunComplete (and releaseClaim) naturally. */
+  hasRunAgent?: boolean;
   /** Timestamp when an idle prompt was last sent to this session */
   idlePromptSentAt?: Date | null;
 }

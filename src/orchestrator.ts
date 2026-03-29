@@ -274,6 +274,7 @@ export class Orchestrator {
         turnCount: 0,
       },
       abortController,
+      hasRunAgent: false,
     };
 
     this.state.running.set(issue.id, entry);
@@ -714,6 +715,7 @@ export class Orchestrator {
         attempt,
         session: null,
         abortController,
+        hasRunAgent: true,
       };
 
       this.state.running.set(issue.id, entry);
@@ -1526,7 +1528,15 @@ export class Orchestrator {
       entry.handoverTimer = setTimeout(async () => {
         log.info('Agent-initiated handover: aborting session', { issueId, identifier: entry.issueIdentifier });
         entry.abortController.abort();
-        this.releaseClaim(issueId);
+        // When hasRunAgent is true, handleRunComplete will be invoked by runAgent after the
+        // abort — it reads entry.handoverRequested and calls releaseClaim itself.  Calling
+        // releaseClaim here first would remove the entry before handleRunComplete can read
+        // handoverRequested, causing it to default to false and schedule a spurious retry.
+        // For resumeSession (hasRunAgent false/absent), handleRunComplete is never called,
+        // so we must release the claim here instead.
+        if (!entry.hasRunAgent) {
+          this.releaseClaim(issueId);
+        }
         if (sessionId) {
           await this.issueTracker.deactivateSession(sessionId);
         }
@@ -1545,7 +1555,11 @@ export class Orchestrator {
       entry.handoverTimer = setTimeout(async () => {
         log.info('Grace period expired, aborting session', { issueId, identifier: entry.issueIdentifier });
         entry.abortController.abort();
-        this.releaseClaim(issueId);
+        // Same reasoning as the agent-initiated path above: skip releaseClaim when
+        // handleRunComplete will be called naturally (hasRunAgent === true).
+        if (!entry.hasRunAgent) {
+          this.releaseClaim(issueId);
+        }
         if (sessionId) {
           await this.issueTracker.deactivateSession(sessionId);
         }
