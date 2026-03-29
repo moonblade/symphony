@@ -358,6 +358,10 @@ export class LinearIssueTrackerClient implements IssueTrackerClient {
     log.warn('deactivateSession not implemented for Linear', { sessionId });
   }
 
+  async deactivateAllIssueSessions(issueId: string): Promise<void> {
+    log.warn('deactivateAllIssueSessions not implemented for Linear', { issueId });
+  }
+
   async getIssueSessions(issueId: string): Promise<IssueSession[]> {
     log.warn('getIssueSessions not implemented for Linear', { issueId });
     return [];

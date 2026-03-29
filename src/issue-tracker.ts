@@ -64,6 +64,7 @@ export interface IssueTrackerClient {
     worktreeRoot?: string | null
   ): Promise<IssueSession>;
   deactivateSession(sessionId: string): Promise<void>;
+  deactivateAllIssueSessions(issueId: string): Promise<void>;
   getIssueSessions(issueId: string): Promise<IssueSession[]>;
   
   // Session export methods
