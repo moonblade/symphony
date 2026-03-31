@@ -735,6 +735,7 @@ export class Orchestrator {
           issueTitle: issue.title,
           fromState,
           toState: onStartState,
+          workflowName: workflow?.name,
         } as IssueStateChangedEvent);
       }
 
@@ -1187,6 +1188,7 @@ export class Orchestrator {
             state: 'Todo',
           });
           this.onIssueUpdated?.();
+          const nextWorkflow = await this.workflowStore.getWorkflow(nextWorkflowId);
           this.emitConnectorEvent({
             type: 'issue_state_changed',
             timestamp: new Date(),
@@ -1195,6 +1197,7 @@ export class Orchestrator {
             issueTitle: issue.title,
             fromState: issue.state,
             toState: 'Todo',
+            workflowName: nextWorkflow?.name,
           } as IssueStateChangedEvent);
         } catch (err) {
           log.error('Failed to chain to next workflow', {
@@ -1315,7 +1318,7 @@ export class Orchestrator {
     log.info('Scheduled retry', { issueId, identifier, attempt, maxRetries, delay, error });
   }
 
-  private async moveToFailureState(issueId: string, identifier: string, reason: string, issueTitle?: string): Promise<void> {
+  private async moveToFailureState(issueId: string, identifier: string, reason: string, issueTitle?: string, workflowName?: string): Promise<void> {
     const failureState = this.config.autoTransitionOnFailure;
     
     try {
@@ -1330,6 +1333,7 @@ export class Orchestrator {
         issueTitle,
         fromState: 'In Progress',
         toState: failureState,
+        workflowName,
       } as IssueStateChangedEvent);
       
       try {
