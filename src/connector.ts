@@ -56,6 +56,7 @@ export interface IssueStateChangedEvent extends ConnectorEvent {
   issueTitle?: string;
   fromState: string;
   toState: string;
+  workflowName?: string;
 }
 
 export interface IssueDeletedEvent extends ConnectorEvent {
