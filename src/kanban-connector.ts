@@ -89,7 +89,7 @@ export class KanbanConnector implements Connector {
       }
 
       case 'agent_started':
-        this.webServer.broadcastStatusUpdated();
+        this.webServer.broadcastIssuesUpdated();
         break;
 
       case 'agent_completed':
@@ -98,7 +98,7 @@ export class KanbanConnector implements Connector {
         if (agentEvent.issueId) {
           this.webServer.clearAgentLogs(agentEvent.issueId);
         }
-        this.webServer.broadcastStatusUpdated();
+        this.webServer.broadcastIssuesUpdated();
         break;
       }
     }
