@@ -43,7 +43,7 @@ export async function renderPrompt(template: string, context: PromptContext): Pr
 }
 
 export function getDefaultPrompt(): string {
-  return 'You are working on an issue from Linear.';
+  return 'You are working on an issue.';
 }
 
 export function getContinuationPrompt(turnCount: number): string {

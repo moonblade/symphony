@@ -1,7 +1,7 @@
 {
   "name": "symphony",
   "version": "1.0.0",
-  "description": "Issue orchestration service that runs opencode agents per Linear issue",
+  "description": "Issue orchestration service that runs opencode agents per issue",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
@@ -20,7 +20,6 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@linear/sdk": "^29.0.0",
     "@modelcontextprotocol/sdk": "^1.27.1",
     "@opencode-ai/sdk": "^1.2.24",
     "@types/node-telegram-bot-api": "^0.64.14",

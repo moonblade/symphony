@@ -1,7 +1,6 @@
 export { WorkflowLoader } from './workflow-loader.js';
 export { ServiceConfig } from './config.js';
 export { IssueTrackerClient } from './issue-tracker.js';
-export { LinearIssueTrackerClient } from './linear-client.js';
 export { LocalSqliteClient } from './local-sqlite-client.js';
 export { GitLabIssueTrackerClient } from './gitlab-client.js';
 export { WorkspaceManager } from './workspace-manager.js';
