@@ -120,6 +120,15 @@ export class ChatManager {
   }
 
   private async _doSendMessage(message: string, onEvent?: ChatEventCallback): Promise<ChatResponse> {
+    // Store user message in history FIRST, before any async operations
+    // This ensures message persists even if session creation fails
+    const userMessage: ChatMessage = {
+      role: 'user',
+      content: message,
+      timestamp: new Date(),
+    };
+    this.messageHistory.push(userMessage);
+
     try {
       await this.ensureSession();
 
@@ -145,13 +154,6 @@ export class ChatManager {
       if (model) {
         log.info('Using chat workflow model', { model: `${model.providerID}/${model.modelID}` });
       }
-
-      // Store user message in history
-      this.messageHistory.push({
-        role: 'user',
-        content: message,
-        timestamp: new Date(),
-      });
 
       log.info('Sending chat message', { 
         sessionId: this.sessionId, 
