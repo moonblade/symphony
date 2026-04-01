@@ -165,6 +165,7 @@ export class OpenCodePlatform implements Platform {
     let inputPrompt: string | undefined;
     let inputContext: string | undefined;
     let error: string | undefined;
+    let stopEventProcessing = false;
 
     const stallChecker = stallTimeoutMs > 0 ? setInterval(() => {
       const elapsed = Date.now() - lastActivityTime;
@@ -174,10 +175,24 @@ export class OpenCodePlatform implements Platform {
       }
     }, 5000) : null;
 
-    try {
-      log.debug('Subscribing to event stream...', { sessionId });
-      const eventStream = await client.event.subscribe();
+    const statusPoller = setInterval(() => {
+      void (async () => {
+        if (completed || error || needsInput || stopEventProcessing) {
+          return;
+        }
 
+        const status = await this.checkSessionStatus(sessionId);
+        if (status === 'idle' && !completed) {
+          log.warn('Session reached idle status via heartbeat polling', { sessionId });
+          completed = true;
+          stopEventProcessing = true;
+        }
+      })().catch((err: Error) => {
+        log.debug('Status poll failed', { sessionId, error: err.message });
+      });
+    }, 30000);
+
+    try {
       log.info('Sending prompt to session', {
         sessionId,
         promptLength: prompt.length,
@@ -204,59 +219,100 @@ export class OpenCodePlatform implements Platform {
       });
 
       const processEvents = async () => {
-        for await (const event of eventStream.stream) {
-          if (error) break;
+        const maxReconnectAttempts = 3;
+        let reconnectAttempts = 0;
 
-          lastActivityTime = Date.now();
+        while (!completed && !error && !stopEventProcessing && !needsInput) {
+          let sawTerminalSessionEvent = false;
 
-          const platformEvent = this.mapEvent(sessionId, event);
-          this.updateSessionFromEvent(session, platformEvent, event);
-          onEvent(platformEvent);
+          try {
+            log.debug('Subscribing to event stream', {
+              sessionId,
+              attempt: reconnectAttempts + 1,
+              maxAttempts: maxReconnectAttempts + 1,
+            });
 
-          if (event.type === 'session.updated') {
-            const status = (event as unknown as { properties?: { status?: { type?: string } } }).properties?.status;
-            if (status?.type === 'idle') {
-              log.info('Session completed (idle status)', { sessionId });
-              completed = true;
-              break;
+            const eventStream = await client.event.subscribe();
+
+            for await (const event of eventStream.stream) {
+              if (error || completed || stopEventProcessing || needsInput) {
+                break;
+              }
+
+              lastActivityTime = Date.now();
+
+              const platformEvent = this.mapEvent(sessionId, event);
+              this.updateSessionFromEvent(session, platformEvent, event);
+              onEvent(platformEvent);
+
+              if (event.type === 'session.updated') {
+                const status = (event as unknown as { properties?: { status?: { type?: string } } }).properties?.status;
+                if (status?.type === 'idle') {
+                  sawTerminalSessionEvent = true;
+                  log.info('Session completed (idle status)', { sessionId });
+                  completed = true;
+                  break;
+                }
+              }
+
+              if (event.type === 'session.error') {
+                sawTerminalSessionEvent = true;
+                const errorProps = (event as unknown as { properties?: { error?: { name?: string; message?: string } } }).properties;
+                const errorName = errorProps?.error?.name;
+
+                if (errorName === 'MessageAbortedError') {
+                  log.debug('Session aborted (expected during stall/cancel)', { sessionId, errorName });
+                  break;
+                }
+
+                error = errorProps?.error?.message ?? JSON.stringify(errorProps);
+                log.error('Session error event received', { sessionId, error });
+                break;
+              }
+
+              if (event.type === 'question.asked') {
+                const questionEvent = event as unknown as { properties: QuestionRequest };
+                const questionRequest = questionEvent.properties;
+
+                if (questionRequest.questions.length > 0) {
+                  const firstQuestion = questionRequest.questions[0];
+                  inputPrompt = firstQuestion.question;
+                  inputContext = JSON.stringify({
+                    requestId: questionRequest.id,
+                    sessionId: questionRequest.sessionID,
+                    header: firstQuestion.header,
+                    options: firstQuestion.options,
+                    multiple: firstQuestion.multiple,
+                    custom: firstQuestion.custom,
+                    allQuestions: questionRequest.questions,
+                  });
+                  needsInput = true;
+                  log.info('Input required from user', { sessionId, prompt: inputPrompt });
+                  break;
+                }
+              }
             }
+          } catch (err) {
+            log.warn('Event stream failed', { sessionId, error: (err as Error).message });
           }
 
-          if (event.type === 'session.error') {
-            const errorProps = (event as unknown as { properties?: { error?: { name?: string; message?: string } } }).properties;
-            const errorName = errorProps?.error?.name;
-            
-            if (errorName === 'MessageAbortedError') {
-              log.debug('Session aborted (expected during stall/cancel)', { sessionId, errorName });
-              break;
-            }
-            
-            error = errorProps?.error?.message ?? JSON.stringify(errorProps);
-            log.error('Session error event received', { sessionId, error });
+          if (completed || error || stopEventProcessing || needsInput || sawTerminalSessionEvent) {
             break;
           }
 
-          if (event.type === 'question.asked') {
-            const questionEvent = event as unknown as { properties: QuestionRequest };
-            const questionRequest = questionEvent.properties;
-
-            if (questionRequest.questions.length > 0) {
-              const firstQuestion = questionRequest.questions[0];
-              inputPrompt = firstQuestion.question;
-              inputContext = JSON.stringify({
-                requestId: questionRequest.id,
-                sessionId: questionRequest.sessionID,
-                header: firstQuestion.header,
-                options: firstQuestion.options,
-                multiple: firstQuestion.multiple,
-                custom: firstQuestion.custom,
-                allQuestions: questionRequest.questions,
-              });
-              needsInput = true;
-              log.info('Input required from user', { sessionId, prompt: inputPrompt });
-              break;
-            }
+          reconnectAttempts++;
+          if (reconnectAttempts > maxReconnectAttempts) {
+            error = `Event stream disconnected unexpectedly after ${maxReconnectAttempts} retries`;
+            log.error('Event stream reconnection limit reached', { sessionId, retries: maxReconnectAttempts });
+            break;
           }
+
+          log.warn('Event stream ended unexpectedly, reconnecting', {
+            sessionId,
+            attempt: reconnectAttempts,
+            maxAttempts: maxReconnectAttempts,
+          });
+          await new Promise(resolve => setTimeout(resolve, 1000));
         }
       };
 
@@ -271,6 +327,7 @@ export class OpenCodePlatform implements Platform {
 
     } finally {
       if (stallChecker) clearInterval(stallChecker);
+      clearInterval(statusPoller);
     }
   }
 
@@ -284,17 +341,75 @@ export class OpenCodePlatform implements Platform {
     const { model, agent } = activeSession;
     log.info('Sending message to session', { sessionId, messageLength: message.length });
 
-    activeSession.client.session.prompt({
-      sessionID: sessionId,
-      parts: [{ type: 'text', text: message }],
-      model,
-      agent,
-      ...(model ? { variant: '' } : {}),
-    }).catch((err: Error) => {
-      log.error('Failed to send message to session', { sessionId, error: err.message });
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    try {
+      const sendPromise = activeSession.client.session.prompt({
+        sessionID: sessionId,
+        parts: [{ type: 'text', text: message }],
+        model,
+        agent,
+        ...(model ? { variant: '' } : {}),
+      });
+
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(new Error('Timed out sending message after 10000ms'));
+        }, 10000);
+      });
+
+      await Promise.race([sendPromise, timeoutPromise]);
+      return true;
+    } catch (err) {
+      log.error('Failed to send message to session', { sessionId, error: (err as Error).message });
+      return false;
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    }
+  }
+
+  async checkSessionStatus(sessionId: string): Promise<'idle' | 'running' | 'error' | 'unknown'> {
+    const activeSession = this.sessions.get(sessionId);
+    const client = activeSession?.client ?? createOpencodeClient({
+      baseUrl: `http://127.0.0.1:${this.serverPort}`,
+      directory: activeSession?.session.workspacePath ?? process.cwd(),
     });
 
-    return true;
+    try {
+      const response = await client.session.list();
+      const sessions = (response as {
+        data?: Array<{
+          id?: string;
+          status?: string | { type?: string };
+          properties?: { status?: string | { type?: string } };
+        }>;
+      }).data;
+
+      if (!sessions) {
+        return 'unknown';
+      }
+
+      const targetSession = sessions.find(s => s.id === sessionId);
+      if (!targetSession) {
+        return 'unknown';
+      }
+
+      const status =
+        (typeof targetSession.status === 'string' ? targetSession.status : targetSession.status?.type) ??
+        (typeof targetSession.properties?.status === 'string'
+          ? targetSession.properties.status
+          : targetSession.properties?.status?.type);
+
+      if (status === 'idle' || status === 'running' || status === 'error') {
+        return status;
+      }
+
+      return 'unknown';
+    } catch (err) {
+      log.warn('Failed to check session status', { sessionId, error: (err as Error).message });
+      return 'unknown';
+    }
   }
 
   async replyToQuestion(sessionId: string, questionId: string, answers: string[]): Promise<void> {

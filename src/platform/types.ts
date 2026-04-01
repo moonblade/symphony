@@ -199,6 +199,8 @@ export interface Platform {
    * Used for forwarding comments to running agents.
    */
   sendMessage(sessionId: string, message: string): Promise<boolean>;
+
+  checkSessionStatus?(sessionId: string): Promise<string>;
   
   /**
    * Reply to a question from the platform.
