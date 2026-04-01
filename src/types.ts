@@ -115,7 +115,7 @@ export const AutoTransitionConfigSchema = z.object({
 });
 
 export const TrackerConfigSchema = z.object({
-  kind: z.enum(['linear', 'local', 'gitlab']).optional(),
+  kind: z.enum(['local', 'gitlab']).optional(),
   endpoint: z.string().optional(),
   api_key: z.string().optional(),
   project_slug: z.string().optional(),
@@ -414,7 +414,7 @@ export const OPENCODE_SERVER_PORT = parseInt(process.env.OPENCODE_SERVER_PORT ??
 
 export const DEFAULTS = {
   tracker: {
-    endpoint: 'https://api.linear.app/graphql',
+    endpoint: '',
     activeStates: ['Todo', 'In Progress'],
     terminalStates: ['Closed', 'Duplicate', 'Done', 'Archived'],
   },

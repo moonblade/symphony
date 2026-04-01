@@ -6,7 +6,6 @@ import * as path from 'node:path';
 import { WorkflowLoader } from './workflow-loader.js';
 import { ServiceConfig } from './config.js';
 import { IssueTrackerClient } from './issue-tracker.js';
-import { LinearIssueTrackerClient } from './linear-client.js';
 import { LocalSqliteClient } from './local-sqlite-client.js';
 import { GitLabIssueTrackerClient } from './gitlab-client.js';
 import { WorkspaceManager } from './workspace-manager.js';
@@ -150,7 +149,6 @@ Workflow Loading (in order of precedence):
 
 Tracker Types:
   local   - Read issues from a local SQLite file (default: ./data/issues.db)
-  linear  - Fetch issues from Linear API (requires LINEAR_API_KEY)
   gitlab  - Fetch issues from GitLab (requires tracker.api_key and tracker.project_path)
 
 Example:
@@ -170,11 +168,6 @@ function createIssueTracker(config: ServiceConfig): IssueTrackerClient {
   if (kind === 'local') {
     log.info('Using SQLite issue tracker', { path: config.trackerIssuesPath });
     return new LocalSqliteClient(config);
-  }
-
-  if (kind === 'linear') {
-    log.info('Using Linear issue tracker');
-    return new LinearIssueTrackerClient(config);
   }
 
   if (kind === 'gitlab') {

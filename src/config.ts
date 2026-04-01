@@ -41,7 +41,7 @@ export class ServiceConfig {
     this.config = config;
   }
 
-  get trackerKind(): 'linear' | 'local' | 'gitlab' {
+  get trackerKind(): 'local' | 'gitlab' {
     return this.config.tracker?.kind ?? 'local';
   }
 
@@ -52,7 +52,7 @@ export class ServiceConfig {
   get trackerApiKey(): string {
     const key = this.config.tracker?.api_key;
     if (!key) {
-      return process.env.LINEAR_API_KEY ?? '';
+      return '';
     }
     return resolveEnvVar(key);
   }
@@ -213,14 +213,7 @@ export class ServiceConfig {
   validate(): ValidationResult {
     const errors: string[] = [];
 
-    if (this.trackerKind === 'linear') {
-      if (!this.trackerApiKey) {
-        errors.push('tracker.api_key is required for Linear (or set LINEAR_API_KEY environment variable)');
-      }
-      if (!this.trackerProjectSlug) {
-        errors.push('tracker.project_slug is required for Linear tracker');
-      }
-    } else if (this.trackerKind === 'gitlab') {
+    if (this.trackerKind === 'gitlab') {
       if (!this.trackerApiKey) {
         errors.push('tracker.api_key is required for GitLab (personal access token)');
       }
@@ -228,7 +221,7 @@ export class ServiceConfig {
         errors.push('tracker.project_path (or project_slug) is required for GitLab tracker (e.g. "group/project")');
       }
     } else if (this.trackerKind !== 'local') {
-      errors.push(`tracker.kind "${this.trackerKind}" is not supported (use "local", "linear", or "gitlab")`);
+      errors.push(`tracker.kind "${this.trackerKind}" is not supported (use "local" or "gitlab")`);
     }
 
     return {
