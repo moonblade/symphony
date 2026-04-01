@@ -236,6 +236,7 @@ export class Orchestrator {
             await this.issueTracker.deactivateSession(issue.sessionId);
           }
           await this.issueTracker.updateIssueSessionId(issue.id, null);
+          this.onIssueUpdated?.();
         }
       }
     } catch (err) {
@@ -371,6 +372,7 @@ export class Orchestrator {
       this.state.claimed.delete(issue.id);
       await this.issueTracker.deactivateSession(sessionId);
       await this.issueTracker.updateIssueSessionId(issue.id, null);
+      this.onIssueUpdated?.();
     }
   }
 
@@ -1545,6 +1547,7 @@ export class Orchestrator {
           await this.issueTracker.deactivateSession(sessionId);
         }
         await this.issueTracker.updateIssueSessionId(issueId, null);
+        this.onIssueUpdated?.();
       }, abortDelayMs);
     } else {
       // Orchestrator-initiated shutdown — give the agent time to finish up gracefully.
@@ -1568,6 +1571,7 @@ export class Orchestrator {
           await this.issueTracker.deactivateSession(sessionId);
         }
         await this.issueTracker.updateIssueSessionId(issueId, null);
+        this.onIssueUpdated?.();
       }, graceMs);
     }
 
@@ -1575,6 +1579,7 @@ export class Orchestrator {
       await this.issueTracker.deactivateSession(sessionId);
     }
     await this.issueTracker.updateIssueSessionId(issueId, null);
+    this.onIssueUpdated?.();
 
     return true;
   }
