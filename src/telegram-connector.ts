@@ -274,6 +274,10 @@ export class TelegramConnector implements Connector {
 
   private handleStateChanged(event: IssueStateChangedEvent): void {
     if (!this.shouldNotifyCard(event.issueId, this.config?.cardNotificationLevel ?? 'all')) return;
+
+    const stateFilter = this.config?.stateNotificationFilter;
+    if (stateFilter && stateFilter.length > 0 && !stateFilter.includes(event.toState)) return;
+
     const titleLine = event.issueTitle ? `\n${event.issueTitle}` : '';
     const workflowLine = event.workflowName ? `\nWorkflow: ${event.workflowName}` : '';
     this.broadcastToAllChats(

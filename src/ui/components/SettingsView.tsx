@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'preact/hooks';
-import type { LocalSettings, TelegramNotificationLevel, TeamsNotificationLevel } from '../types.js';
+import type { LocalSettings, TelegramNotificationLevel, TeamsNotificationLevel, KanbanColumnState } from '../types.js';
+import { KANBAN_COLUMNS } from '../types.js';
 import { api } from '../api.js';
 
 export function SettingsView() {
@@ -13,6 +14,7 @@ export function SettingsView() {
   const [tgAllowlist, setTgAllowlist] = useState('');
   const [tgCardLevel, setTgCardLevel] = useState<TelegramNotificationLevel>('all');
   const [tgCommentLevel, setTgCommentLevel] = useState<TelegramNotificationLevel>('all');
+  const [tgStateFilter, setTgStateFilter] = useState<KanbanColumnState[]>([...KANBAN_COLUMNS]);
   const [teamsAppId, setTeamsAppId] = useState('');
   const [teamsAppPassword, setTeamsAppPassword] = useState('');
   const [teamsAllowlist, setTeamsAllowlist] = useState('');
@@ -30,6 +32,11 @@ export function SettingsView() {
       setTgAllowlist(data.telegram?.allowlist || '');
       setTgCardLevel(data.telegram?.cardNotificationLevel ?? 'all');
       setTgCommentLevel(data.telegram?.commentNotificationLevel ?? 'all');
+      setTgStateFilter(
+        data.telegram?.stateNotificationFilter != null
+          ? (data.telegram.stateNotificationFilter as KanbanColumnState[])
+          : [...KANBAN_COLUMNS]
+      );
       setTeamsAppId(data.teams?.appId || '');
       setTeamsAppPassword(data.teams?.appPassword || '');
       setTeamsAllowlist(data.teams?.allowlist || '');
@@ -78,6 +85,7 @@ export function SettingsView() {
           allowlist: tgAllowlist.trim() || null,
           cardNotificationLevel: tgCardLevel,
           commentNotificationLevel: tgCommentLevel,
+          stateNotificationFilter: tgStateFilter.length === KANBAN_COLUMNS.length ? null : tgStateFilter,
         },
       });
       setSettings(updated);
@@ -104,6 +112,7 @@ export function SettingsView() {
           allowlist: tgAllowlist.trim() || null,
           cardNotificationLevel: tgCardLevel,
           commentNotificationLevel: tgCommentLevel,
+          stateNotificationFilter: tgStateFilter.length === KANBAN_COLUMNS.length ? null : tgStateFilter,
         },
       });
       setSettings(updated);
@@ -468,6 +477,43 @@ export function SettingsView() {
                     <option value="telegram_only">Telegram-initiated only</option>
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
+                  Notify on State Transitions
+                </label>
+                <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
+                  Notify when a card moves <strong>into</strong> the selected states. Uncheck all to suppress all state notifications.
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  {KANBAN_COLUMNS.map((state) => {
+                    const checked = tgStateFilter.includes(state);
+                    return (
+                      <label key={state} className="flex items-center gap-1.5 text-sm cursor-pointer" style={{ color: 'var(--text-primary)' }}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={saving}
+                          onChange={() => {
+                            setTgStateFilter(
+                              checked
+                                ? tgStateFilter.filter((s) => s !== state)
+                                : [...tgStateFilter, state]
+                            );
+                          }}
+                          className="rounded"
+                        />
+                        {state}
+                      </label>
+                    );
+                  })}
+                </div>
+                {tgStateFilter.length === 0 && (
+                  <p className="mt-2 text-xs" style={{ color: 'var(--accent-yellow, #d97706)' }}>
+                    No states selected — state change notifications are disabled.
+                  </p>
+                )}
               </div>
 
               <div className="pt-2" style={{ borderTop: '1px solid var(--border-primary)' }}>
