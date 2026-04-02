@@ -2,7 +2,7 @@
 import * as esbuild from 'esbuild';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { copyFileSync, mkdirSync, existsSync } from 'fs';
+import { copyFileSync, mkdirSync, existsSync, writeFileSync } from 'fs';
 import { execFileSync } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -74,7 +74,10 @@ async function build(): Promise<void> {
       console.log('Watching for changes...');
     } else {
       await esbuild.build(buildOptions);
-      console.log('UI bundle built successfully');
+      // Write build nonce for cache busting (changes on each build)
+      const nonce = Date.now().toString(36);
+      writeFileSync(join(rootDir, 'dist/ui/.build-nonce'), nonce);
+      console.log(`UI bundle built successfully (nonce: ${nonce})`);
     }
   } catch (error) {
     console.error('Build failed:', error);

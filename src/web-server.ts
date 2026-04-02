@@ -72,7 +72,7 @@ export class WebServer {
   private chatSseClients: Set<Response> = new Set();
   private agentLogs: Map<string, AgentLogEntry[]> = new Map();
   private maxAgentLogEntries = 200;
-  private readonly startupNonce: string = Date.now().toString(36);
+  private readonly startupNonce: string;
 
   constructor(options: WebServerOptions) {
     this.port = options.port;
@@ -87,6 +87,11 @@ export class WebServer {
       workflowStore: this.workflowStore,
       dataDir: this.config.dataDir,
     });
+
+    const nonceFile = join(uiDir, '.build-nonce');
+    this.startupNonce = existsSync(nonceFile)
+      ? readFileSync(nonceFile, 'utf-8').trim()
+      : Date.now().toString(36);
 
     this.setupMiddleware();
     this.setupRoutes();
