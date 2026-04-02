@@ -117,7 +117,8 @@ export function createEventSource(
   onInputRequired: (request: { issueId: string; issueIdentifier: string; prompt: string; context?: string }) => void,
   onInputSubmitted: (data: { issueId: string }) => void,
   onWorkflowsUpdated: () => void,
-  onSettingsUpdated: () => void
+  onSettingsUpdated: () => void,
+  onCommentsUpdated?: (issueId: string) => void
 ): EventSourceController {
   let evtSource: EventSource | null = null;
   let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -154,6 +155,9 @@ export function createEventSource(
           break;
         case 'settings_updated':
           onSettingsUpdated();
+          break;
+        case 'comments_updated':
+          onCommentsUpdated?.(event.data.issueId);
           break;
       }
     };
