@@ -174,4 +174,5 @@ export interface AppState {
   isChatOpen: boolean;
   isGenerating: boolean;
   workflowBadgeMode: 'border';
+  commentsUpdatedForIssueId: string | null;
 }

@@ -57,9 +57,10 @@ interface IssueModalProps {
   issue?: Issue;
   onClose: () => void;
   onSave: () => void;
+  commentsUpdatedForIssueId?: string | null;
 }
 
-export function IssueModal({ issue, onClose, onSave }: IssueModalProps) {
+export function IssueModal({ issue, onClose, onSave, commentsUpdatedForIssueId }: IssueModalProps) {
   const isExistingIssue = !!issue?.id;
   
   const [identifier, setIdentifier] = useState(issue?.identifier || '');
@@ -101,6 +102,12 @@ export function IssueModal({ issue, onClose, onSave }: IssueModalProps) {
       commentsEndRef.current.scrollIntoView({ behavior: 'instant' });
     }
   }, [comments]);
+
+  useEffect(() => {
+    if (isExistingIssue && issue && commentsUpdatedForIssueId === issue.id) {
+      loadComments();
+    }
+  }, [commentsUpdatedForIssueId]);
 
   // Handle escape key
   useEffect(() => {
@@ -215,9 +222,9 @@ export function IssueModal({ issue, onClose, onSave }: IssueModalProps) {
     if (!issue || !newComment.trim()) return;
 
     try {
-      await api.addIssueComment(issue.id, 'human', newComment);
+      const comment = await api.addIssueComment(issue.id, 'human', newComment);
       setNewComment('');
-      loadComments();
+      setComments((prev) => [...prev, comment]);
     } catch (err) {
       console.error('Failed to add comment', err);
       alert('Failed to add comment');

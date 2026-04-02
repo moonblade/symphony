@@ -20,6 +20,7 @@ export function useAppState() {
     isChatOpen: false,
     isGenerating: false,
     workflowBadgeMode: 'border',
+    commentsUpdatedForIssueId: null,
   });
 
   const updateState = useCallback((updates: Partial<AppState>) => {
@@ -166,6 +167,9 @@ export function useAppState() {
     },
     onWorkflowsUpdated: fetchWorkflows,
     onSettingsUpdated: fetchSettings,
+    onCommentsUpdated: useCallback((issueId: string) => {
+      updateState({ commentsUpdatedForIssueId: issueId });
+    }, [updateState]),
   });
 
   return {

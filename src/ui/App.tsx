@@ -137,6 +137,7 @@ export function App(): JSX.Element {
           }
           onClose={handleCloseIssueModal}
           onSave={handleIssueSaved}
+          commentsUpdatedForIssueId={state.commentsUpdatedForIssueId}
         />
       )}
 

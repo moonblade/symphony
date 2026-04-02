@@ -11,6 +11,7 @@ interface UseEventSourceProps {
   onInputSubmitted: (data: { issueId: string }) => void;
   onWorkflowsUpdated: () => void;
   onSettingsUpdated: () => void;
+  onCommentsUpdated?: (issueId: string) => void;
 }
 
 export function useEventSource(props: UseEventSourceProps) {
@@ -18,7 +19,7 @@ export function useEventSource(props: UseEventSourceProps) {
   
   useEffect(() => {
     propsRef.current = props;
-  }, [props.onLog, props.onAgentLog, props.onIssuesUpdated, props.onStatusUpdated, props.onInputRequired, props.onInputSubmitted, props.onWorkflowsUpdated, props.onSettingsUpdated]);
+  }, [props.onLog, props.onAgentLog, props.onIssuesUpdated, props.onStatusUpdated, props.onInputRequired, props.onInputSubmitted, props.onWorkflowsUpdated, props.onSettingsUpdated, props.onCommentsUpdated]);
 
   useEffect(() => {
     const eventSource = createEventSource(
@@ -29,7 +30,8 @@ export function useEventSource(props: UseEventSourceProps) {
       (req) => propsRef.current.onInputRequired(req),
       (data) => propsRef.current.onInputSubmitted(data),
       () => propsRef.current.onWorkflowsUpdated(),
-      () => propsRef.current.onSettingsUpdated()
+      () => propsRef.current.onSettingsUpdated(),
+      (issueId) => propsRef.current.onCommentsUpdated?.(issueId)
     );
 
     return () => {
