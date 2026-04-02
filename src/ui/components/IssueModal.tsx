@@ -277,6 +277,30 @@ export function IssueModal({ issue, onClose, onSave }: IssueModalProps) {
     }
   };
 
+  useEffect(() => {
+    if (!isExistingIssue) return;
+    const handleActionShortcuts = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey)) return;
+
+      if (e.key === 'R' && e.shiftKey && issue?.workflowId) {
+        e.preventDefault();
+        handleResetWorkflow();
+        return;
+      }
+
+      if (e.key === 'Enter' && !e.shiftKey) {
+        const target = e.target as HTMLElement;
+        const textarea = commentInputRef.current;
+        if (target === textarea && !newComment.trim() && state !== 'Todo') {
+          e.preventDefault();
+          handleMoveToTodo();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleActionShortcuts);
+    return () => window.removeEventListener('keydown', handleActionShortcuts);
+  }, [isExistingIssue, issue?.workflowId, newComment, state, handleMoveToTodo, handleResetWorkflow]);
+
   const handleExportSessions = async () => {
     if (!issue) return;
     setIsExporting(true);
@@ -497,7 +521,7 @@ export function IssueModal({ issue, onClose, onSave }: IssueModalProps) {
                                 type="button"
                                 onClick={handleMoveToTodo}
                                 className="px-2.5 py-1 text-xs font-medium rounded-md border border-gray-300 dark:border-[#3d3d3d] text-gray-600 dark:text-[#a0a0a0] hover:bg-gray-100 dark:hover:bg-[#3d3d3d] transition-colors"
-                                title="Move card to Todo"
+                                title={`Move card to Todo (${navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}+Enter on empty comment)`}
                               >
                                 → Todo
                               </button>
@@ -507,7 +531,7 @@ export function IssueModal({ issue, onClose, onSave }: IssueModalProps) {
                                 type="button"
                                 onClick={handleResetWorkflow}
                                 className="px-2.5 py-1 text-xs font-medium rounded-md border border-gray-300 dark:border-[#3d3d3d] text-gray-600 dark:text-[#a0a0a0] hover:bg-gray-100 dark:hover:bg-[#3d3d3d] transition-colors"
-                                title="Reset to first workflow in chain and move to Todo"
+                                title={`Reset to first workflow in chain and move to Todo (${navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}+Shift+R)`}
                               >
                                 ↺ Reset Workflow
                               </button>
