@@ -13,6 +13,7 @@ export interface TelegramConfig {
   cardNotificationLevel?: TelegramNotificationLevel;
   commentNotificationLevel?: TelegramNotificationLevel;
   knownChatIds?: number[];
+  stateNotificationFilter?: string[] | null;
 }
 
 export type TeamsNotificationLevel = 'all' | 'teams_only';

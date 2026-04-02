@@ -130,6 +130,7 @@ export interface TelegramSettings {
   allowlist?: string | null;
   cardNotificationLevel?: TelegramNotificationLevel;
   commentNotificationLevel?: TelegramNotificationLevel;
+  stateNotificationFilter?: string[] | null;
 }
 
 export type TeamsNotificationLevel = 'all' | 'teams_only';
