@@ -82,10 +82,18 @@ export class WorkspaceManager {
     };
   }
 
-  async runBeforeRunHook(workspacePath: string): Promise<void> {
+  async runBeforeRunHook(workspacePath: string, issueIdentifier?: string): Promise<void> {
     if (this.config.hooksBeforeRun) {
-      await this.runHook('before_run', this.config.hooksBeforeRun, workspacePath);
+      const extraEnv = issueIdentifier ? { SYMPHONY_ISSUE_IDENTIFIER: issueIdentifier } : undefined;
+      await this.runHook('before_run', this.config.hooksBeforeRun, workspacePath, extraEnv);
     }
+  }
+
+  resolveWorktreePathTemplate(template: string, issueIdentifier: string): string {
+    const resolved = template.replace(/\{\{\s*identifier\s*\}\}/gi, issueIdentifier.toLowerCase());
+    return resolved.startsWith('~')
+      ? path.join(process.env.HOME ?? '', resolved.slice(1))
+      : resolved;
   }
 
   async runAfterRunHook(workspacePath: string): Promise<void> {
@@ -158,7 +166,7 @@ export class WorkspaceManager {
     }
   }
 
-  private runHook(name: string, script: string, cwd: string): Promise<void> {
+  private runHook(name: string, script: string, cwd: string, extraEnv?: Record<string, string>): Promise<void> {
     return new Promise((resolve, reject) => {
       log.debug(`Running ${name} hook`, { cwd });
 
@@ -166,7 +174,7 @@ export class WorkspaceManager {
       const child = spawn('bash', ['-lc', script], {
         cwd,
         stdio: ['ignore', 'pipe', 'pipe'],
-        env: { ...process.env },
+        env: { ...process.env, ...extraEnv },
       });
 
       let stdout = '';

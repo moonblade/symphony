@@ -127,6 +127,12 @@ export const TrackerConfigSchema = z.object({
 
 export const WorkspaceConfigSchema = z.object({
   root: z.string().optional(),
+  /** Template for the actual agent working directory path.
+   *  Supports {{ identifier }} placeholder which will be replaced with the issue identifier.
+   *  Example: "/tmp/cvchatapp-{{ identifier }}"
+   *  If set, the agent will run from this path instead of the workspace root.
+   *  The before_run hook should create this directory (e.g., as a git worktree). */
+  worktree_path_template: z.string().optional(),
 });
 
 export const HooksConfigSchema = z.object({

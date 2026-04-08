@@ -225,7 +225,14 @@ export class Orchestrator {
           const workflowWorkspaceRoot = workflow?.config?.workspace?.root;
           
           const workspace = await this.workspaceManager.ensureWorkspace(issue.identifier, workflowWorkspaceRoot);
-          await this.resumeSession(issue, workspace.path, issue.sessionId);
+          
+          let resumeWorkspacePath = workspace.path;
+          const worktreeTemplate = workflow?.config?.workspace?.worktree_path_template;
+          if (worktreeTemplate) {
+            resumeWorkspacePath = this.workspaceManager.resolveWorktreePathTemplate(worktreeTemplate, issue.identifier);
+          }
+          
+          await this.resumeSession(issue, resumeWorkspacePath, issue.sessionId);
         } catch (err) {
           log.warn('Failed to resume session for issue', { 
             issueId: issue.id, 
@@ -701,9 +708,21 @@ export class Orchestrator {
       const workflowWorkspaceRoot = workflow?.config?.workspace?.root;
       
       const workspace = await this.workspaceManager.ensureWorkspace(issue.identifier, workflowWorkspaceRoot);
-      await this.workspaceManager.runBeforeRunHook(workspace.path);
+      await this.workspaceManager.runBeforeRunHook(workspace.path, issue.identifier);
 
-      const worktreeRoot = await this.workspaceManager.getGitWorktreeRoot(workspace.path);
+      let agentWorkspacePath = workspace.path;
+      const worktreeTemplate = workflow?.config?.workspace?.worktree_path_template;
+      if (worktreeTemplate) {
+        agentWorkspacePath = this.workspaceManager.resolveWorktreePathTemplate(worktreeTemplate, issue.identifier);
+        log.info('Using worktree path template', {
+          issueId: issue.id,
+          identifier: issue.identifier,
+          template: worktreeTemplate,
+          resolved: agentWorkspacePath,
+        });
+      }
+
+      const worktreeRoot = await this.workspaceManager.getGitWorktreeRoot(agentWorkspacePath);
       const abortController = new AbortController();
 
       const entry: RunningEntry = {
@@ -711,7 +730,7 @@ export class Orchestrator {
         issueIdentifier: issue.identifier,
         issue,
         workflowId,
-        workspacePath: workspace.path,
+        workspacePath: agentWorkspacePath,
         worktreeRoot,
         startedAt: new Date(),
         attempt,
@@ -747,10 +766,10 @@ export class Orchestrator {
         issueId: issue.id,
         issueIdentifier: issue.identifier,
         workflowId,
-        workspacePath: workspace.path,
+        workspacePath: agentWorkspacePath,
       } as AgentStartedEvent);
 
-      this.runAgent(issue, workspace.path, attempt, abortController.signal);
+      this.runAgent(issue, agentWorkspacePath, attempt, abortController.signal);
 
     } catch (err) {
       log.error('Failed to start run', {
