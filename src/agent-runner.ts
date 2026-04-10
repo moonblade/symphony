@@ -1,4 +1,5 @@
-import { Issue, LiveSession, AgentEvent, AgentEventType, InputRequest, DEFAULTS, OPENCODE_SERVER_PORT } from './types.js';
+import { spawn } from 'node:child_process';
+import { Issue, LiveSession, AgentEvent, AgentEventType, BabysitPayload, InputRequest, DEFAULTS, OPENCODE_SERVER_PORT } from './types.js';
 import { ServiceConfig } from './config.js';
 import { renderPrompt, getDefaultPrompt, getContinuationPrompt } from './prompt-renderer.js';
 import { Logger } from './logger.js';
@@ -27,6 +28,15 @@ export interface AgentRunResult {
   turnCount: number;
   error?: string;
   session: LiveSession | null;
+}
+
+export interface BabysitContext {
+  command: string;
+  workspacePath: string;
+  mrId?: string;
+  pipelineId?: string;
+  signal: AbortSignal;
+  onEvent: (event: AgentEvent) => void;
 }
 
 export class AgentRunner {
@@ -446,5 +456,78 @@ export class AgentRunner {
     }
     this.platform = null;
     this.sessionId = null;
+  }
+
+  async runBabysit(ctx: BabysitContext): Promise<void> {
+    const { command, workspacePath, mrId, pipelineId, signal, onEvent } = ctx;
+
+    log.info('Starting babysit subprocess', { command, mrId, pipelineId });
+
+    const child = spawn('bash', ['-lc', command], {
+      cwd: workspacePath,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: process.env,
+    });
+
+    const emitLine = (line: string, stream: 'stdout' | 'stderr') => {
+      const payload: BabysitPayload = { source: 'babysit', mrId, pipelineId, line, stream };
+      onEvent({
+        type: 'other_message',
+        timestamp: new Date(),
+        payload,
+      });
+    };
+
+    const abortHandler = () => { child.kill('SIGTERM'); };
+    signal.addEventListener('abort', abortHandler, { once: true });
+
+    let stdoutBuf = '';
+    child.stdout!.on('data', (chunk: Buffer) => {
+      stdoutBuf += chunk.toString();
+      const lines = stdoutBuf.split('\n');
+      stdoutBuf = lines.pop() ?? '';
+      for (const line of lines) {
+        if (line) emitLine(line, 'stdout');
+      }
+    });
+
+    let stderrBuf = '';
+    child.stderr!.on('data', (chunk: Buffer) => {
+      stderrBuf += chunk.toString();
+      const lines = stderrBuf.split('\n');
+      stderrBuf = lines.pop() ?? '';
+      for (const line of lines) {
+        if (line) emitLine(line, 'stderr');
+      }
+    });
+
+    return new Promise((resolve) => {
+      child.on('close', (code: number | null) => {
+        signal.removeEventListener('abort', abortHandler);
+        if (stdoutBuf) emitLine(stdoutBuf, 'stdout');
+        if (stderrBuf) emitLine(stderrBuf, 'stderr');
+
+        if (code !== 0 && code !== null) {
+          const payload: BabysitPayload = { source: 'babysit', mrId, pipelineId, exitCode: code };
+          onEvent({
+            type: 'turn_failed',
+            timestamp: new Date(),
+            payload,
+          });
+        }
+        resolve();
+      });
+
+      child.on('error', (err: Error) => {
+        signal.removeEventListener('abort', abortHandler);
+        const payload: BabysitPayload = { source: 'babysit', mrId, pipelineId, error: err.message };
+        onEvent({
+          type: 'turn_failed',
+          timestamp: new Date(),
+          payload,
+        });
+        resolve();
+      });
+    });
   }
 }

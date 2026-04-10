@@ -931,6 +931,29 @@ export class Orchestrator {
       });
     };
 
+    const babysitCommand = hookVars['SYMPHONY_BABYSIT_COMMAND'];
+    if (babysitCommand && hookVars['SYMPHONY_PIPELINE_RUNNING'] === 'true') {
+      runner.runBabysit({
+        command: babysitCommand,
+        workspacePath,
+        mrId: hookVars['SYMPHONY_MR_NUMBER'],
+        pipelineId: hookVars['SYMPHONY_PIPELINE_ID'],
+        signal,
+        onEvent: (event) => {
+          const runEntry = this.state.running.get(issue.id);
+          if (runEntry?.session) {
+            runEntry.session.lastEventTimestamp = event.timestamp;
+          }
+          const eventLevel = this.getEventLogLevel(event.type);
+          const eventMessage = this.formatEventMessage(event);
+          const richDetails = this.extractRichDetails(event);
+          emitAgentLog(event.type, eventMessage, eventLevel, richDetails);
+        },
+      }).catch(err => {
+        log.warn('Babysit subprocess error', { error: (err as Error).message });
+      });
+    }
+
     try {
       let promptTemplate = this.promptTemplate;
       let platformConfig: PlatformConfig | undefined;

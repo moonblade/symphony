@@ -288,6 +288,20 @@ export interface OrchestratorState {
 }
 
 // ============================================================================
+// Babysit Subprocess Payload
+// ============================================================================
+
+export interface BabysitPayload {
+  source: 'babysit';
+  mrId?: string;
+  pipelineId?: string;
+  line?: string;
+  stream?: 'stdout' | 'stderr';
+  exitCode?: number;
+  error?: string;
+}
+
+// ============================================================================
 // Agent Events (Section 10.4)
 // ============================================================================
 
