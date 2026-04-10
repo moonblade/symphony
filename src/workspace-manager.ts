@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { spawn } from 'node:child_process';
-import { Workspace } from './types.js';
+import { Issue, Workspace } from './types.js';
 import { ServiceConfig } from './config.js';
 import { Logger } from './logger.js';
 
@@ -82,11 +82,40 @@ export class WorkspaceManager {
     };
   }
 
-  async runBeforeRunHook(workspacePath: string, issueIdentifier?: string): Promise<void> {
-    if (this.config.hooksBeforeRun) {
-      const extraEnv = issueIdentifier ? { SYMPHONY_ISSUE_IDENTIFIER: issueIdentifier } : undefined;
-      await this.runHook('before_run', this.config.hooksBeforeRun, workspacePath, extraEnv);
+  async runBeforeRunHook(workspacePath: string, issue?: Issue): Promise<Record<string, string>> {
+    if (!this.config.hooksBeforeRun) {
+      return {};
     }
+
+    const extraEnv: Record<string, string> = {};
+    if (issue) {
+      extraEnv.SYMPHONY_ISSUE_IDENTIFIER = issue.identifier;
+      extraEnv.SYMPHONY_ISSUE_COMMENTS = JSON.stringify(
+        issue.comments.map(c => ({
+          id: c.id,
+          author: c.author,
+          content: c.content,
+          created_at: c.createdAt?.toISOString() ?? null,
+        }))
+      );
+    }
+
+    const stdout = await this.runHookWithOutput('before_run', this.config.hooksBeforeRun, workspacePath, extraEnv);
+    return this.parseKeyValueOutput(stdout);
+  }
+
+  private parseKeyValueOutput(output: string): Record<string, string> {
+    const result: Record<string, string> = {};
+    for (const line of output.split('\n')) {
+      const eqIdx = line.indexOf('=');
+      if (eqIdx <= 0) continue;
+      const key = line.slice(0, eqIdx).trim();
+      const value = line.slice(eqIdx + 1).trim();
+      if (/^[A-Z_][A-Z0-9_]*$/.test(key)) {
+        result[key] = value;
+      }
+    }
+    return result;
   }
 
   resolveWorktreePathTemplate(template: string, issueIdentifier: string): string {
@@ -167,6 +196,10 @@ export class WorkspaceManager {
   }
 
   private runHook(name: string, script: string, cwd: string, extraEnv?: Record<string, string>): Promise<void> {
+    return this.runHookWithOutput(name, script, cwd, extraEnv).then(() => undefined);
+  }
+
+  private runHookWithOutput(name: string, script: string, cwd: string, extraEnv?: Record<string, string>): Promise<string> {
     return new Promise((resolve, reject) => {
       log.debug(`Running ${name} hook`, { cwd });
 
@@ -198,7 +231,7 @@ export class WorkspaceManager {
 
         if (code === 0) {
           log.debug(`${name} hook completed`, { cwd });
-          resolve();
+          resolve(stdout);
         } else {
           log.error(`${name} hook failed`, { code, stdout, stderr });
           reject(new Error(`${name} hook failed with exit code ${code}`));
