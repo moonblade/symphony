@@ -708,7 +708,7 @@ export class Orchestrator {
       const workflowWorkspaceRoot = workflow?.config?.workspace?.root;
       
       const workspace = await this.workspaceManager.ensureWorkspace(issue.identifier, workflowWorkspaceRoot);
-      await this.workspaceManager.runBeforeRunHook(workspace.path, issue.identifier);
+      const hookVars = await this.workspaceManager.runBeforeRunHook(workspace.path, issue);
 
       let agentWorkspacePath = workspace.path;
       const worktreeTemplate = workflow?.config?.workspace?.worktree_path_template;
@@ -769,7 +769,7 @@ export class Orchestrator {
         workspacePath: agentWorkspacePath,
       } as AgentStartedEvent);
 
-      this.runAgent(issue, agentWorkspacePath, attempt, abortController.signal);
+      this.runAgent(issue, agentWorkspacePath, attempt, abortController.signal, hookVars);
 
     } catch (err) {
       log.error('Failed to start run', {
@@ -786,7 +786,8 @@ export class Orchestrator {
     issue: Issue,
     workspacePath: string,
     attempt: number | null,
-    signal: AbortSignal
+    signal: AbortSignal,
+    hookVars: Record<string, string> = {}
   ): Promise<void> {
     const runner = new AgentRunner();
 
@@ -969,6 +970,7 @@ export class Orchestrator {
         workspacePath,
         promptTemplate,
         attempt,
+        hookVars,
         config: this.config,
         onEvent,
         signal,

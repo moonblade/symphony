@@ -9,6 +9,7 @@ const engine = new Liquid({
 export interface PromptContext {
   issue: Issue;
   attempt: number | null;
+  hookVars?: Record<string, string>;
 }
 
 export async function renderPrompt(template: string, context: PromptContext): Promise<string> {
@@ -37,6 +38,7 @@ export async function renderPrompt(template: string, context: PromptContext): Pr
   };
 
   return await engine.parseAndRender(template, {
+    ...context.hookVars,
     issue: issueForTemplate,
     attempt: context.attempt,
   });

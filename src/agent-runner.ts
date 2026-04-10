@@ -13,6 +13,7 @@ export interface AgentRunnerOptions {
   workspacePath: string;
   promptTemplate: string;
   attempt: number | null;
+  hookVars?: Record<string, string>;
   config: ServiceConfig;
   onEvent: (event: AgentEvent) => void;
   signal: AbortSignal;
@@ -111,7 +112,7 @@ export class AgentRunner {
   }
 
   async run(options: AgentRunnerOptions): Promise<AgentRunResult> {
-    const { issue, workspacePath, promptTemplate, attempt, config, onEvent, signal, waitForInput, platform, platformConfig } = options;
+    const { issue, workspacePath, promptTemplate, attempt, hookVars, config, onEvent, signal, waitForInput, platform, platformConfig } = options;
 
     let turnCount = 0;
     let session: LiveSession | null = null;
@@ -131,7 +132,7 @@ export class AgentRunner {
       });
 
       const template = promptTemplate || getDefaultPrompt();
-      const renderedPrompt = await renderPrompt(template, { issue, attempt });
+      const renderedPrompt = await renderPrompt(template, { issue, attempt, hookVars });
 
       log.info('Starting agent session', {
         issueId: issue.id,
