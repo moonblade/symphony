@@ -243,6 +243,18 @@ export function IssueModal({ issue, onClose, onSave, commentsUpdatedForIssueId }
     }
   };
 
+  const handleMoveToDone = async () => {
+    if (!issue) return;
+    try {
+      await api.updateIssue(issue.id, { state: 'Done' });
+      setState('Done');
+      onSave();
+    } catch (err) {
+      console.error('Failed to move issue to Done', err);
+      alert('Failed to move issue to Done');
+    }
+  };
+
   const findRootWorkflowId = (currentWorkflowId: string): string => {
     const pointedToBy = new Map<string, string>();
     for (const wf of workflows) {
@@ -531,6 +543,16 @@ export function IssueModal({ issue, onClose, onSave, commentsUpdatedForIssueId }
                                 title={`Move card to Todo (${navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}+Enter on empty comment)`}
                               >
                                 → Todo
+                              </button>
+                            )}
+                            {isExistingIssue && state !== 'Done' && (
+                              <button
+                                type="button"
+                                onClick={handleMoveToDone}
+                                className="px-2.5 py-1 text-xs font-medium rounded-md border border-green-300 dark:border-green-800 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+                                title="Move card to Done"
+                              >
+                                ✓ Done
                               </button>
                             )}
                             {isExistingIssue && issue?.workflowId && (
