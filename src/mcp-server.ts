@@ -513,9 +513,24 @@ async function handleUpdateState(input: UpdateStateInput): Promise<{ success: bo
   }
 }
 
+async function getDefaultWorkflowId(): Promise<string | null> {
+  try {
+    const response = await fetch(`${SYMPHONY_API_URL}/api/workflows`);
+    if (!response.ok) return null;
+    const workflows: Array<{ id: string; isDefault: boolean }> = await response.json();
+    const defaultWorkflow = workflows.find(w => w.isDefault) ?? workflows[0] ?? null;
+    return defaultWorkflow ? defaultWorkflow.id : null;
+  } catch (_err) {
+    return null;
+  }
+}
+
 async function handleCreateIssue(input: CreateIssueInput): Promise<{ success: boolean; issue?: { id: string; identifier: string; title: string; state: string }; error?: string }> {
   try {
-    const modelResult = await resolveModel(input.model, input.workflow_id);
+    // If no workflow_id provided, fall back to the default workflow
+    const workflowId = input.workflow_id ?? await getDefaultWorkflowId() ?? undefined;
+
+    const modelResult = await resolveModel(input.model, workflowId);
     if (modelResult.error) {
       return { success: false, error: modelResult.error };
     }
@@ -530,7 +545,7 @@ async function handleCreateIssue(input: CreateIssueInput): Promise<{ success: bo
         description: input.description,
         state: input.state || 'Backlog',
         priority: input.priority || 3,
-        workflow_id: input.workflow_id,
+        workflow_id: workflowId,
         labels: input.labels,
         model: modelResult.resolvedModel,
       }),
