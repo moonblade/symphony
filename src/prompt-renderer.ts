@@ -2,7 +2,7 @@ import { Liquid } from 'liquidjs';
 import { Issue } from './types.js';
 
 const engine = new Liquid({
-  strictVariables: true,
+  strictVariables: false,
   strictFilters: true,
 });
 

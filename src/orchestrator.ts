@@ -225,6 +225,8 @@ export class Orchestrator {
           const workflowWorkspaceRoot = workflow?.config?.workspace?.root;
           
           const workspace = await this.workspaceManager.ensureWorkspace(issue.identifier, workflowWorkspaceRoot);
+          const workflowBeforeRun = workflow?.config?.hooks?.before_run;
+          await this.workspaceManager.runBeforeRunHook(workspace.path, issue, workflowBeforeRun);
           
           let resumeWorkspacePath = workspace.path;
           const worktreeTemplate = workflow?.config?.workspace?.worktree_path_template;
@@ -708,7 +710,8 @@ export class Orchestrator {
       const workflowWorkspaceRoot = workflow?.config?.workspace?.root;
       
       const workspace = await this.workspaceManager.ensureWorkspace(issue.identifier, workflowWorkspaceRoot);
-      const hookVars = await this.workspaceManager.runBeforeRunHook(workspace.path, issue);
+      const workflowBeforeRun = workflow?.config?.hooks?.before_run;
+      const hookVars = await this.workspaceManager.runBeforeRunHook(workspace.path, issue, workflowBeforeRun);
 
       let agentWorkspacePath = workspace.path;
       const worktreeTemplate = workflow?.config?.workspace?.worktree_path_template;

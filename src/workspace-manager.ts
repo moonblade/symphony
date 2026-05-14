@@ -82,14 +82,17 @@ export class WorkspaceManager {
     };
   }
 
-  async runBeforeRunHook(workspacePath: string, issue?: Issue): Promise<Record<string, string>> {
-    if (!this.config.hooksBeforeRun) {
+  async runBeforeRunHook(workspacePath: string, issue?: Issue, hookOverride?: string): Promise<Record<string, string>> {
+    const hookScript = hookOverride ?? this.config.hooksBeforeRun;
+    if (!hookScript) {
       return {};
     }
 
     const extraEnv: Record<string, string> = {};
     if (issue) {
       extraEnv.SYMPHONY_ISSUE_IDENTIFIER = issue.identifier;
+      extraEnv.SYMPHONY_ISSUE_TITLE = issue.title ?? '';
+      extraEnv.SYMPHONY_ISSUE_DESCRIPTION = issue.description ?? '';
       extraEnv.SYMPHONY_ISSUE_COMMENTS = JSON.stringify(
         issue.comments.map(c => ({
           id: c.id,
@@ -100,7 +103,7 @@ export class WorkspaceManager {
       );
     }
 
-    const stdout = await this.runHookWithOutput('before_run', this.config.hooksBeforeRun, workspacePath, extraEnv);
+    const stdout = await this.runHookWithOutput('before_run', hookScript, workspacePath, extraEnv);
     return this.parseKeyValueOutput(stdout);
   }
 

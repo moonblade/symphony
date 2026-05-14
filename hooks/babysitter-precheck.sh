@@ -1,15 +1,40 @@
 #!/bin/bash
 set -e
 
-MR_NUMBER=$(grep -oP '(?:merge_requests?|mr|!)[/\s:]?(\d+)' <<< "$SYMPHONY_ISSUE_COMMENTS" 2>/dev/null | grep -oP '\d+' | tail -1)
+# Combine all sources: comments, description, and title
+ALL_TEXT="$SYMPHONY_ISSUE_COMMENTS $SYMPHONY_ISSUE_DESCRIPTION $SYMPHONY_ISSUE_TITLE"
 
+# Try multiple patterns to extract MR number:
+# 1. GitLab MR URLs: merge_requests/123 or -/merge_requests/123
+# 2. MR shorthand: !123, MR:123, MR 123, mr:123, mr#123
+# 3. Comment/description text like "merge_request 123" or "MR number: 123"
+
+# Pattern 1: GitLab URL format (most reliable)
+MR_NUMBER=$(echo "$ALL_TEXT" | grep -oE 'merge_requests/[0-9]+' | grep -oE '[0-9]+' | tail -1)
+
+# Pattern 2: MR shorthand with bang notation (!123)
 if [ -z "$MR_NUMBER" ]; then
-  MR_NUMBER=$(echo "$SYMPHONY_ISSUE_COMMENTS" | grep -oE '![0-9]+' | grep -oE '[0-9]+' | tail -1)
+  MR_NUMBER=$(echo "$ALL_TEXT" | grep -oE '![0-9]+' | grep -oE '[0-9]+' | tail -1)
+fi
+
+# Pattern 3: MR with various separators (MR:123, MR #123, MR-123, mr 123)
+if [ -z "$MR_NUMBER" ]; then
+  MR_NUMBER=$(echo "$ALL_TEXT" | grep -oiE 'mr[:#\s-]*[0-9]+' | grep -oE '[0-9]+' | tail -1)
+fi
+
+# Pattern 4: Generic number in URL path (cvchatapp/-/merge_requests/123)
+if [ -z "$MR_NUMBER" ]; then
+  MR_NUMBER=$(echo "$ALL_TEXT" | grep -oE 'cvchatapp[^0-9]*[0-9]+' | grep -oE '[0-9]+' | tail -1)
 fi
 
 if [ -z "$MR_NUMBER" ]; then
-  echo "ERROR: No MR found in issue comments"
-  exit 1
+  echo "ERROR: No MR found in issue comments, description, or title"
+  echo "SYMPHONY_MR_NOT_FOUND=true"
+  echo "SYMPHONY_MR_NUMBER="
+  echo "SYMPHONY_PIPELINE_ID="
+  echo "SYMPHONY_PIPELINE_STATUS=unknown"
+  # Don't exit with error - let the template handle the missing MR gracefully
+  exit 0
 fi
 
 cd ~/workspace/cvchatapp || exit 1
